@@ -1,0 +1,35 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# build outputs
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# turbo
+.turbo/
+
+# env (예시 파일만 커밋)
+.env
+.env.*
+!.env.example
+infra/k8s/overlays/**/secrets.env
+
+# logs / os
+*.log
+.DS_Store
+
+# flutter / dart
+apps/client-mobile/.dart_tool/
+apps/client-mobile/build/
+apps/client-mobile/.flutter-plugins
+apps/client-mobile/.flutter-plugins-dependencies
+
+# ide
+.idea/
+.vscode/*
+!.vscode/extensions.json

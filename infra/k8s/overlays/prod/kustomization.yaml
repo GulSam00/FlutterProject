@@ -1,0 +1,42 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: app-prod
+
+resources:
+  - ../../base
+
+images:
+  # 운영은 가변 태그(latest 등) 금지 → 불변 태그(git sha) 또는 digest 로 고정해 롤백 재현성 보장
+  - name: server-api
+    newName: ghcr.io/your-org/server-api
+    newTag: '0.1.0'
+  - name: client-web
+    newName: ghcr.io/your-org/client-web
+    newTag: '0.1.0'
+
+configMapGenerator:
+  - name: server-api-config
+    behavior: merge
+    literals:
+      - APP_VERSION=0.1.0
+      - CORS_ORIGINS=https://web.example.com
+      - DB_HOST=postgres.prod.internal
+      - REDIS_HOST=redis.prod.internal
+      - DB_POOL_MAX=8
+
+secretGenerator:
+  - name: server-api-secrets
+    envs:
+      - secrets.env
+
+patches:
+  - path: patches/hpa.yaml
+  - path: patches/backend-resources.yaml
+  - target:
+      kind: Deployment
+      name: client-web
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3

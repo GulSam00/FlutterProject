@@ -1,0 +1,9 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: server-api
+spec:
+  # 최소 3: 존(AZ) 3개에 1개씩 → 단일 AZ 장애에도 2/3 용량 유지
+  minReplicas: 3
+  # 20 × DB_POOL_MAX(8) = 160 커넥션 ≤ Postgres max_connections(예: 200) - 관리용 여유분
+  maxReplicas: 20

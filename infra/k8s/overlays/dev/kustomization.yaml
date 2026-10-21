@@ -1,0 +1,54 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: app-dev
+
+resources:
+  - ../../base
+
+images:
+  - name: server-api
+    newName: ghcr.io/your-org/server-api
+    newTag: dev
+  - name: client-web
+    newName: ghcr.io/your-org/client-web
+    # NEXT_PUBLIC_API_URL=https://api.dev.example.com 으로 빌드된 이미지
+    newTag: dev
+
+configMapGenerator:
+  - name: server-api-config
+    behavior: merge
+    literals:
+      - CORS_ORIGINS=https://web.dev.example.com
+      - DB_HOST=postgres.dev.internal
+      - REDIS_HOST=redis.dev.internal
+
+# 시크릿은 Git 에 커밋하지 않는다 (secrets.env 는 .gitignore). 운영에서는 External Secrets / Sealed Secrets 권장.
+# 내용이 바뀌면 이름 해시가 바뀌어 Deployment 가 자동 롤아웃된다 (시크릿 교체가 반영되지 않는 사고 방지).
+secretGenerator:
+  - name: server-api-secrets
+    envs:
+      - secrets.env
+
+patches:
+  - path: patches/hpa.yaml
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |-
+      - op: replace
+        path: /spec/tls/0/hosts
+        value: [api.dev.example.com, web.dev.example.com]
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.dev.example.com
+      - op: replace
+        path: /spec/rules/1/host
+        value: web.dev.example.com
+  - target:
+      kind: Deployment
+      name: client-web
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1

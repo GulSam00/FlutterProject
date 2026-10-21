@@ -1,0 +1,40 @@
+# Kustomize base — 환경 비종속 공통 리소스.
+# 환경별 차이(이미지 태그, 레플리카, 리소스, 도메인, 시크릿)는 overlays/<env> 에서만 패치한다.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: boilerplate
+      app.kubernetes.io/managed-by: kustomize
+    includeSelectors: false
+
+namespace: app
+
+resources:
+  - namespace.yaml
+  - network-policy.yaml
+  # backend
+  - backend-deployment.yaml
+  - backend-service.yaml
+  - backend-hpa.yaml
+  - backend-pdb.yaml
+  # web
+  - web-deployment.yaml
+  - web-service.yaml
+  - web-pdb.yaml
+  # edge
+  - ingress.yaml
+
+configMapGenerator:
+  - name: server-api-config
+    envs:
+      - backend-config.env
+
+images:
+  - name: server-api
+    newName: ghcr.io/your-org/server-api
+    newTag: latest
+  - name: client-web
+    newName: ghcr.io/your-org/client-web
+    newTag: latest

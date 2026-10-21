@@ -1,0 +1,167 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 1: 로컬 통합 환경
+#   docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env up -d --build
+#
+# 네트워크 설계
+#   - 모든 서비스는 단일 사용자 정의 브리지 네트워크(app-net)에 격리된다.
+#     → 컨테이너 이름으로 DNS 해석(postgres, redis, server-api ...), 호스트의 다른 컨테이너와 분리
+#   - 외부(호스트)로 노출되는 진입점은 Nginx(80) 하나뿐이다. 앱 컨테이너는 `expose` 만 사용.
+#   - DB/Redis 는 로컬 디버깅(GUI 툴) 용도로 127.0.0.1 에만 바인딩 → 같은 네트워크의 다른 기기에서 접근 불가
+# ─────────────────────────────────────────────────────────────────────────────
+name: ${COMPOSE_PROJECT_NAME:-boilerplate}
+
+x-logging:
+  &default-logging # 로그 로테이션 없이 json-file 을 쓰면 디스크가 가득 차 호스트 전체가 멈출 수 있다
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      # 컨테이너 내 로케일 차이로 인한 정렬/비교 결과 불일치 방지
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+      TZ: UTC
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks: [app-net]
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      # AOF 영속화: 컨테이너 재시작 시 큐(BullMQ) 데이터 유실 방지
+      - --appendonly
+      - 'yes'
+      # 메모리 상한 + 축출 정책: 상한 없이 쓰면 호스트 OOM. (BullMQ 전용 인스턴스라면 noeviction 으로 변경)
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+    environment:
+      # redis-cli 가 비밀번호를 커맨드라인 인자 대신 환경변수로 읽게 함 (ps 로 노출 방지)
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    ports:
+      - '127.0.0.1:6379:6379'
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [app-net]
+    logging: *default-logging
+
+  server-api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.server
+    image: boilerplate/server-api:local
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      APP_VERSION: ${APP_VERSION:-0.0.0}
+      CORS_ORIGINS: http://web.local.dev
+      TRUST_PROXY_HOPS: 1
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_SSL: 'false'
+      DB_POOL_MAX: 10
+      # 로컬 단일 인스턴스에서만 부팅 시 마이그레이션. k8s 에서는 별도 Job 으로 실행 (다중 Pod 동시 실행 경합 방지)
+      DB_RUN_MIGRATIONS: 'true'
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: 0
+      HEALTH_MEMORY_RSS_THRESHOLD_MB: 400
+      # V8 힙 상한을 컨테이너 메모리 상한보다 낮게 → GC 가 먼저 동작해 OOMKill 대신 정상 회수
+      NODE_OPTIONS: --max-old-space-size=384
+    expose: ['3000']
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    networks: [app-net]
+    logging: *default-logging
+
+  client-web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.local.dev}
+    image: boilerplate/client-web:local
+    restart: unless-stopped
+    environment:
+      # RSC 는 Nginx 를 거치지 않고 내부 DNS 로 직접 호출 (hairpin 트래픽 제거)
+      API_INTERNAL_URL: http://server-api:3000
+    expose: ['3001']
+    depends_on:
+      server-api:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    networks: [app-net]
+    logging: *default-logging
+
+  nginx:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    ports:
+      - '${NGINX_HTTP_PORT:-80}:80'
+      # Flutter 에뮬레이터/실기기용 API 진입점 (Host 헤더 불필요)
+      - '${NGINX_MOBILE_API_PORT:-8080}:8080'
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/snippets:/etc/nginx/snippets:ro
+    depends_on:
+      server-api:
+        condition: service_healthy
+      client-web:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1/nginx-health || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks: [app-net]
+    logging: *default-logging
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  # 명명된 볼륨: `docker compose down` 으로는 삭제되지 않는다 (데이터 초기화는 `down -v`)
+  pg-data:
+  redis-data:
