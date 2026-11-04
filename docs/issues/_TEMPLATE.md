@@ -1,5 +1,5 @@
 ---
-id: ISSUE-0000
+id: YYYY-MM-DD-slug # 파일 이름(확장자 제외)과 같아야 한다
 title: 한 줄 제목
 status: todo # todo | in-progress | blocked | done
 priority: P2 # P1(운영 장애 위험) | P2(일반) | P3(개선)
@@ -8,7 +8,11 @@ created: YYYY-MM-DD
 updated: YYYY-MM-DD
 ---
 
-# ISSUE-0000: 한 줄 제목
+# 한 줄 제목
+
+## 현재 상태
+
+<!-- 항상 최신으로 고쳐 쓴다. 어디까지 됐는지 / 남은 것 / 막힌 것을 3~5줄로 -->
 
 ## 배경
 
@@ -24,4 +28,4 @@ updated: YYYY-MM-DD
 
 ## 변경 로그
 
-<!-- 추가만 한다. 새 항목은 맨 아래에. 형식은 루트 CLAUDE.md "이슈 작업 절차" 참조 -->
+<!-- 새 항목은 맨 위에 넣는다 (최신순). 기존 항목은 고치지 않는다. 형식은 루트 CLAUDE.md "이슈 작업 절차" 참조 -->

@@ -1,5 +1,5 @@
 ---
-id: ISSUE-0003
+id: 2026-11-04-generate-dart-contract-models
 title: Dart API 계약 모델을 손으로 옮기지 않고 생성하는 방식 검토
 status: todo
 priority: P3
@@ -8,7 +8,11 @@ created: 2026-11-04
 updated: 2026-11-04
 ---
 
-# ISSUE-0003: Dart API 계약 모델 생성 방식 검토
+# Dart API 계약 모델 생성 방식 검토
+
+## 현재 상태
+
+착수 전. 현재 도메인은 health 하나뿐이라 급하지 않다. 도메인이 2~3개를 넘기 전에 착수한다.
 
 ## 배경
 
@@ -27,6 +31,12 @@ API 계약의 원천은 `packages/shared-types`(TypeScript + Zod)다. 그런데 
 - 웹 클라이언트의 Zod 검증 방식 변경
 
 ## 변경 로그
+
+### 2026-11-04 · claude/festive-franklin-pk7qxz
+
+- 변경: 이슈 ID 체계를 날짜+slug로 바꾸면서 ID를 `ISSUE-0003` → `2026-11-04-generate-dart-contract-models`로 변경. `## 현재 상태` 섹션 추가
+- 검증: `pnpm format:check` → 통과
+- 다음: 없음 (이슈 내용 자체는 변경 없음)
 
 ### 2026-11-04 · claude/festive-franklin-pk7qxz
 

@@ -1,5 +1,5 @@
 ---
-id: ISSUE-0001
+id: 2026-11-04-verify-tini-signal-handling
 title: 실제 Docker 이미지에서 tini 종료 신호 전달 검증
 status: todo
 priority: P1
@@ -8,7 +8,12 @@ created: 2026-11-04
 updated: 2026-11-04
 ---
 
-# ISSUE-0001: 실제 Docker 이미지에서 tini 종료 신호 전달 검증
+# 실제 Docker 이미지에서 tini 종료 신호 전달 검증
+
+## 현재 상태
+
+착수 전. 커밋된 Dockerfile 그대로는 아직 한 번도 빌드·검증되지 않았다.
+Alpine 패키지 저장소와 Docker Hub에 접근할 수 있는 환경이 필요하다.
 
 ## 배경
 
@@ -32,6 +37,12 @@ updated: 2026-11-04
 - K8s 환경에서의 preStop/grace period 튜닝
 
 ## 변경 로그
+
+### 2026-11-04 · claude/festive-franklin-pk7qxz
+
+- 변경: 이슈 ID 체계를 날짜+slug로 바꾸면서 ID를 `ISSUE-0001` → `2026-11-04-verify-tini-signal-handling`로 변경. `## 현재 상태` 섹션 추가
+- 검증: `pnpm format:check` → 통과
+- 다음: 없음 (이슈 내용 자체는 변경 없음)
 
 ### 2026-11-04 · claude/festive-franklin-pk7qxz
 

@@ -1,5 +1,5 @@
 ---
-id: ISSUE-0002
+id: 2026-11-04-restrict-health-detail-exposure
 title: 외부에서 health 상세 정보(버전·메모리·지연시간) 노출 제한
 status: todo
 priority: P1
@@ -8,7 +8,11 @@ created: 2026-11-04
 updated: 2026-11-04
 ---
 
-# ISSUE-0002: 외부에서 health 상세 정보 노출 제한
+# 외부에서 health 상세 정보 노출 제한
+
+## 현재 상태
+
+착수 전. 차단 방식(Ingress 경로 차단 vs 서버 응답 축소)을 아직 정하지 않았다.
 
 ## 배경
 
@@ -28,6 +32,12 @@ updated: 2026-11-04
 - 인증된 관리자 전용 진단 API 신설
 
 ## 변경 로그
+
+### 2026-11-04 · claude/festive-franklin-pk7qxz
+
+- 변경: 이슈 ID 체계를 날짜+slug로 바꾸면서 ID를 `ISSUE-0002` → `2026-11-04-restrict-health-detail-exposure`로 변경. `## 현재 상태` 섹션 추가
+- 검증: `pnpm format:check` → 통과
+- 다음: 없음 (이슈 내용 자체는 변경 없음)
 
 ### 2026-11-04 · claude/festive-franklin-pk7qxz
 
