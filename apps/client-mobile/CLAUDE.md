@@ -6,8 +6,9 @@
 
 - 이 앱은 pnpm 워크스페이스와 turbo 파이프라인 밖에 있다. `pnpm lint` / `pnpm test`에 포함되지 않는다.
 - 정적 분석: `pnpm mobile:analyze` · 테스트: `pnpm mobile:test` · 포맷: `cd apps/client-mobile && dart format .`
-- 클라우드 세션 컨테이너에는 Flutter SDK가 기본으로 없다. 명령이 실패하면 "검증 미실행: flutter 없음"으로 기록한다.
-  자동 설치는 `docs/issues/2026-11-04-session-start-toolchain-hook.md`에서 다룬다.
+- 클라우드 세션에서는 Flutter SDK를 자동으로 설치하지 않는다 (세션 준비 시간 때문에 의도한 기본값).
+  모바일 검증이 필요하면 먼저 `bash scripts/setup-toolchain.sh --with-flutter`를 실행한다 (고정 버전 3.47.7, 약 3분).
+  설치할 수 없으면 실행한 것처럼 기록하지 말고 "검증 미실행: flutter 없음"으로 남긴다.
 - 실행: `flutter run --dart-define=API_BASE_URL=<주소>`
   - 기본값 `http://10.0.2.2:8080`은 Android 에뮬레이터 전용 주소(호스트 PC)다. iOS 시뮬레이터는 `http://localhost:8080`.
   - `:8080`은 Host 헤더 없이 API로 가는 Nginx 포트다. 에뮬레이터에서 `api.local.dev` 도메인을 쓸 수 없어서 따로 두었다.

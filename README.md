@@ -62,6 +62,23 @@ Flutter ──► Nginx(:8080, Host 무관) ────────────
 echo "127.0.0.1 api.local.dev web.local.dev" | sudo tee -a /etc/hosts
 ```
 
+### Claude 클라우드 세션 설정
+
+클라우드 세션은 매번 새 컨테이너에서 시작해서 kustomize, kubeconform이 없습니다.
+claude.ai 환경 설정(세션 제목 표시줄의 클라우드 환경 메뉴 → Edit → **Setup script**)에 아래 두 줄을 넣으면,
+새 컨테이너를 만들 때 한 번 설치됩니다. setup script는 저장소의 상위 디렉터리에서 시작하므로 `cd`가 먼저 필요합니다.
+
+```bash
+cd FlutterProject
+bash scripts/setup-toolchain.sh
+```
+
+- 설치 로직과 고정 버전·sha256은 `scripts/setup-toolchain.sh`에 있습니다 (환경 설정에는 호출만 둡니다).
+- Flutter SDK(약 2GB)는 세션 준비 시간을 줄이려고 기본 설치에서 뺐습니다. 모바일 작업 때 세션 안에서
+  `bash scripts/setup-toolchain.sh --with-flutter`를 실행하세요 (약 3분).
+- 세션이 시작될 때 `.claude/settings.json`의 SessionStart hook(`scripts/check-toolchain.sh`)이 도구 유무만 확인하고,
+  빠진 것이 있으면 알려줍니다. 이 hook은 아무것도 설치하지 않습니다.
+
 ---
 
 ## 3. 로컬 실행 및 검증 가이드 (Step-by-Step)

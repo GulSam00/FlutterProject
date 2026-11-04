@@ -59,6 +59,8 @@
 - 모바일 변경: `pnpm mobile:analyze && pnpm mobile:test`
 - 인프라 변경: `kustomize build infra/k8s/overlays/<dev|prod> | kubeconform -strict -summary -kubernetes-version 1.33.0`
 - 실행 확인이 필요하면 `pnpm docker:up` 후 README의 Step 3 검증 명령
+- 도구(kustomize, kubeconform, flutter)가 없으면 `bash scripts/setup-toolchain.sh` (Flutter는 `--with-flutter`).
+  설치할 수 없으면 해당 검증을 "검증 미실행: <도구> 없음"으로 기록한다
 
 ## API 계약 (깨면 클라이언트 3개가 동시에 깨진다)
 

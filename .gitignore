@@ -29,6 +29,9 @@ apps/client-mobile/build/
 apps/client-mobile/.flutter-plugins
 apps/client-mobile/.flutter-plugins-dependencies
 
+# claude code: 공유 설정(.claude/settings.json)만 커밋, 개인 설정은 제외
+.claude/settings.local.json
+
 # ide
 .idea/
 .vscode/*
