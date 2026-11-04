@@ -45,8 +45,13 @@
    검증하지 못한 항목이 있으면 `done`으로 바꾸지 말고, 이유를 로그에 적고 `blocked` 또는 `in-progress`로 둔다.
 8. 범위 밖의 문제를 발견하면 현재 이슈에 섞지 말고 새 이슈 파일을 만든다.
 
+9. **하위 Agent(Explore, Plan 등)의 조사·검증 결과는 메인 세션이 이슈 로그에 기록한다.**
+   하위 Agent의 보고는 대화 안에만 남고 사라진다. 실제로 실행한 명령과 결과만 `검증:`에 적는다.
+
 상태 값: `todo` → `in-progress` → `done` (막히면 `blocked`). 조회:
 `grep -H '^status:' docs/issues/[0-9]*.md`
+
+앱별 규칙은 `apps/<app>/CLAUDE.md`에 있다. 그 앱의 파일을 다룰 때 함께 읽는다.
 
 ## 검증 (작업 완료 전 실행하고 결과를 변경 로그에 기록)
 
@@ -65,7 +70,8 @@
 
 ## 금지
 
-- TypeScript `any`, `as unknown as` 우회 (불가피하면 근거를 주석으로 남긴다)
+- TypeScript `any`, `as unknown as` 우회 (불가피하면 근거를 주석으로 남긴다).
+  예외: `*.spec.ts`의 mock 객체 (`docs/issues/2026-11-04-typed-test-mocks.md`에서 제거 예정)
 - TypeORM `synchronize: true`. 스키마 변경은 반드시 migration으로 한다.
 - liveness(`/health/live`)에 의존성 체크 추가. DB 장애 시 모든 Pod가 동시에 재시작된다.
 - HPA가 관리하는 Deployment에 `replicas` 지정
