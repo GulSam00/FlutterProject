@@ -1,7 +1,7 @@
 ---
 id: 2026-11-05-add-ci-pipeline
 title: CI 파이프라인 구축 (검증 명령과 템플릿 검증 자동 실행)
-status: todo
+status: in-progress
 priority: P2
 area: [infra]
 created: 2026-11-05
@@ -12,7 +12,8 @@ updated: 2026-11-05
 
 ## 현재 상태
 
-착수 전. 이 저장소에는 CI 설정이 없다 (`.github/` 디렉터리 자체가 없다).
+착수. `.github/workflows/ci.yml` 과 `scripts/validate-issues.sh` 를 작성했다.
+GitHub Actions 에서 실제로 돌아가는지는 push 후 실행 결과로 확인한다.
 
 ## 배경
 
@@ -35,6 +36,7 @@ updated: 2026-11-05
 - [ ] Flutter 설치는 모바일 파일이 바뀐 경우에만 (전체 실행 시간 절약)
 - [ ] 이슈 절차 검사 스크립트 추가 (`scripts/validate-issues.sh` 등)
 - [ ] 일부러 규칙을 위반한 커밋으로 각 검사가 실패하는 것을 확인
+- [ ] GitHub Actions 에서 실제 실행 결과 확인 (워크플로 문법·job 조건이 의도대로 동작하는지)
 
 ## 범위 밖
 
@@ -42,6 +44,27 @@ updated: 2026-11-05
 - 커밋 메시지 형식 검사
 
 ## 변경 로그
+
+### 2026-11-05 · claude/festive-franklin-pk7qxz
+
+- 변경: `.github/workflows/ci.yml`(신규), `scripts/validate-issues.sh`(신규)
+  - 워크플로 설계: CI 안에 로직을 두지 않고 `scripts/` 의 명령만 호출한다.
+    "로컬은 통과하는데 CI 만 실패" 또는 그 반대를 막기 위한 것이다
+  - job 7개: `changes`(변경 영역 판단) · `issues` · `verify`(lint·typecheck·test·format) ·
+    `contracts` · `k8s` · `mobile` · `scaffold`.
+    `contracts`·`k8s`·`mobile` 은 해당 파일이 바뀐 PR 에서만 돈다 (Flutter 설치가 수 분 걸린다)
+  - `validate-issues.sh` 가 검사하는 것: 파일명 형식, `id`-파일명 일치, `status` 값,
+    `done` 인데 체크 안 된 완료 조건, 필수 섹션, 변경 로그 항목 유무
+  - 기계로 판정할 수 없는 "로그에 적힌 검증을 실제로 실행했는가" 는 CI 가 검증 명령을 **직접 다시 돌려서** 대신한다
+- 검증:
+  - `bash scripts/validate-issues.sh` → 이슈 12개 통과
+  - 일부러 위반을 만들어 각각 exit 1 확인:
+    ① `done` 인데 `- [ ]` 남김 → "체크되지 않은 완료 조건이 1건"
+    ② `id` 를 파일명과 다르게 → "frontmatter id 가 파일 이름과 다릅니다"
+    ③ `status: finished` → "status 값이 올바르지 않습니다". 복원 후 다시 통과
+  - 워크플로 YAML 파싱 확인 (job 7개, needs/if 조건 포함)
+  - **미검증**: GitHub Actions 에서의 실제 실행. push 후 결과를 확인해야 한다
+- 다음: push 후 Actions 실행 결과 확인
 
 ### 2026-11-05 · claude/festive-franklin-pk7qxz
 

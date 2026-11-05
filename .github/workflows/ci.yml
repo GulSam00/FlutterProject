@@ -1,0 +1,143 @@
+# 검증 파이프라인.
+#
+# 설계 원칙
+#   1. CI 는 로컬과 **같은 명령**을 돌린다. `scripts/` 의 스크립트를 호출할 뿐이고 CI 안에 로직을 두지 않는다.
+#      그래야 "로컬은 통과하는데 CI 만 실패" 또는 그 반대가 생기지 않는다.
+#   2. 이슈 로그의 "검증했다" 기록을 믿지 않고 직접 다시 돌린다. 기록은 참고용이고 판정은 CI 가 한다.
+#   3. 모바일·인프라 검증은 해당 파일이 바뀐 PR 에서만 돌린다 (Flutter SDK 설치가 수 분 걸린다).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# 같은 브랜치에 새 푸시가 오면 진행 중인 실행을 취소한다 (러너 시간 낭비 방지).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # 어떤 영역이 바뀌었는지 먼저 판단해, 뒤 job 들이 자신을 돌릴지 결정하게 한다
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      mobile: ${{ steps.filter.outputs.mobile }}
+      infra: ${{ steps.filter.outputs.infra }}
+      contracts: ${{ steps.filter.outputs.contracts }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # 변경 비교를 위해 기준 커밋이 필요하다
+          fetch-depth: 0
+      - id: filter
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+        run: |
+          set -euo pipefail
+          if [ -n "$BASE_SHA" ]; then
+            changed="$(git diff --name-only "$BASE_SHA"...HEAD)"
+          else
+            # push 이벤트: 직전 커밋과 비교. 첫 커밋이면 전부 바뀐 것으로 본다.
+            changed="$(git diff --name-only HEAD~1...HEAD 2>/dev/null || git ls-files)"
+          fi
+          printf '%s\n' "$changed"
+          match() { printf '%s\n' "$changed" | grep -qE "$1" && echo true || echo false; }
+          {
+            echo "mobile=$(match '^apps/client-mobile/|^scripts/templates/')"
+            echo "infra=$(match '^infra/|^scripts/validate-k8s\.sh$')"
+            echo "contracts=$(match '^packages/shared-types/|^apps/client-mobile/lib/core/network/|^apps/client-mobile/lib/features/')"
+          } >> "$GITHUB_OUTPUT"
+
+  issues:
+    name: 이슈 절차
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: bash scripts/validate-issues.sh
+
+  verify:
+    name: lint · typecheck · test · format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run lint typecheck test
+      - run: pnpm format:check
+
+  contracts:
+    name: 계약 드리프트
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:contracts
+
+  k8s:
+    name: K8s 매니페스트
+    needs: changes
+    if: needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      # 로컬과 같은 버전·체크섬으로 설치한다 (CI 가 다른 버전을 쓰면 통과 결과가 달라진다)
+      - run: bash scripts/setup-toolchain.sh
+      - run: bash scripts/validate-k8s.sh
+
+  mobile:
+    name: Flutter
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      # Flutter 설치가 가장 오래 걸린다. 그래서 모바일·템플릿 변경이 있을 때만 이 job 이 돈다.
+      - run: bash scripts/setup-toolchain.sh --with-flutter
+      - run: pnpm mobile:analyze
+      - run: pnpm mobile:test
+
+  # 생성기 템플릿이 공통 코드 변경으로 낡지 않았는지. 임시 도메인을 만들어 전체 검증 후 되돌린다.
+  scaffold:
+    name: 생성기 템플릿
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Flutter 설치 (모바일 템플릿 검증용)
+        if: needs.changes.outputs.mobile == 'true'
+        run: bash scripts/setup-toolchain.sh --with-flutter
+      - name: 의존성 설치
+        if: needs.changes.outputs.mobile != 'true'
+        run: bash scripts/setup-toolchain.sh
+      # flutter 가 없으면 verify-scaffold.sh 가 모바일 검증을 "미실행" 으로 알리고 나머지를 계속한다
+      - run: bash scripts/verify-scaffold.sh
