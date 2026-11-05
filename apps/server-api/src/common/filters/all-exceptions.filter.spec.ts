@@ -1,4 +1,10 @@
-import { type ArgumentsHost, HttpStatus, Logger, NotFoundException } from '@nestjs/common';
+import {
+  type ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import type { HttpAdapterHost } from '@nestjs/core';
 import { QueryFailedError } from 'typeorm';
 import { CONTENT_TYPES, PROBLEM_TYPES, type ProblemDetails } from '@repo/shared-types';
@@ -96,5 +102,33 @@ describe('AllExceptionsFilter', () => {
     const [{ status, body }] = replies as [ReplyCall];
     expect(status).toBe(HttpStatus.INTERNAL_SERVER_ERROR);
     expect(body.detail).not.toContain('hunter2');
+  });
+
+  // title 은 status→문구 표에서 온다. enum 역매핑을 쓰던 때는 타입 우회가 필요했다.
+  describe('problem title', () => {
+    it.each([
+      [HttpStatus.NOT_FOUND, 'Not Found'],
+      [HttpStatus.UNPROCESSABLE_ENTITY, 'Unprocessable Entity'],
+      [HttpStatus.TOO_MANY_REQUESTS, 'Too Many Requests'],
+      [HttpStatus.BAD_GATEWAY, 'Bad Gateway'],
+    ])('%i → "%s"', (status, expected) => {
+      const { filter, host, replies } = createHarness();
+
+      filter.catch(new HttpException('boom', status), host);
+
+      const [{ body }] = replies as [ReplyCall];
+      expect(body.title).toBe(expected);
+    });
+
+    it('표에 없는 상태 코드는 "Error" 로 떨어진다', () => {
+      const { filter, host, replies } = createHarness();
+
+      // 418 은 이 서비스가 쓰지 않는 상태 코드다
+      filter.catch(new HttpException('teapot', 418), host);
+
+      const [{ status, body }] = replies as [ReplyCall];
+      expect(status).toBe(418);
+      expect(body.title).toBe('Error');
+    });
   });
 });

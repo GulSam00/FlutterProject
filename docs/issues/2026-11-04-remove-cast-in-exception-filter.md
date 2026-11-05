@@ -1,18 +1,18 @@
 ---
 id: 2026-11-04-remove-cast-in-exception-filter
 title: AllExceptionsFilter의 HttpStatus 역매핑 타입 우회 제거
-status: todo
+status: done
 priority: P3
 area: [server]
 created: 2026-11-04
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 # AllExceptionsFilter의 HttpStatus 역매핑 타입 우회 제거
 
 ## 현재 상태
 
-착수 전.
+완료. `STATUS_TITLES` 표로 바꿨고 프로덕션 코드의 `as unknown as` 는 0건이다.
 
 ## 배경
 
@@ -25,15 +25,30 @@ updated: 2026-11-04
 
 ## 완료 조건
 
-- [ ] 프로덕션 코드의 `as unknown as` 0건: `grep -rn "as unknown as" apps/server-api/src --include=*.ts | grep -v spec`
-- [ ] `all-exceptions.filter.spec.ts`에 title 매핑 테스트 추가 (404 → "Not Found", 매핑 없는 상태 → "Error")
-- [ ] `pnpm --filter @app/server-api test` 및 `pnpm lint` 통과
+- [x] 프로덕션 코드의 `as unknown as` 0건: `grep -rn "as unknown as" apps/server-api/src --include=*.ts | grep -v spec`
+- [x] `all-exceptions.filter.spec.ts`에 title 매핑 테스트 추가 (404 → "Not Found", 매핑 없는 상태 → "Error")
+- [x] `pnpm --filter @app/server-api test` 및 `pnpm lint` 통과
 
 ## 범위 밖
 
 - spec 파일의 mock (`2026-11-04-typed-test-mocks`에서 다룸)
 
 ## 변경 로그
+
+### 2026-11-05 · claude/festive-franklin-pk7qxz
+
+- 변경: `all-exceptions.filter.ts` 의 `statusTitle()` 이 `HttpStatus` 숫자 enum 역매핑을 쓰면서
+  `as unknown as Record<number, string | undefined>` 로 타입을 우회하고 있었다.
+  모듈 수준 상수 `STATUS_TITLES`(RFC 9110 reason phrase, 4xx·5xx 21개)로 바꿨다.
+  표에 없는 상태는 기존과 같이 `'Error'` 로 떨어진다.
+  부수 효과로 클라이언트에 나가는 문구가 코드에 그대로 보이고, enum 이름이 바뀌어도 영향받지 않는다.
+- 검증:
+  - `grep -rn "as unknown as" apps/server-api/src --include=*.ts | grep -v spec` →
+    남은 1건은 "왜 표를 쓰는가" 를 설명하는 주석 문구이며 코드가 아니다
+  - `all-exceptions.filter.spec.ts` 에 title 매핑 테스트 5건 추가
+    (404/422/429/502 문구, 그리고 표에 없는 418 → `'Error'` + 상태 코드 418 유지)
+  - `pnpm --filter @app/server-api test` → 22개 통과 (기존 17 + 5), `lint` 통과, `pnpm format:check` 통과
+- 다음: 없음
 
 ### 2026-11-04 · claude/festive-franklin-pk7qxz
 

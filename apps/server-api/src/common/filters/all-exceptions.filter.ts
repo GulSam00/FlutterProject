@@ -29,6 +29,40 @@ const STATUS_TO_PROBLEM_TYPE: Partial<Record<number, ProblemType>> = {
   [HttpStatus.SERVICE_UNAVAILABLE]: PROBLEM_TYPES.SERVICE_UNAVAILABLE,
 };
 
+/**
+ * HTTP 상태 → problem `title` (RFC 9110 의 reason phrase).
+ *
+ * 왜 표를 직접 두는가
+ *  `HttpStatus` 는 숫자 enum 이라 역매핑(`HttpStatus[404] === 'NOT_FOUND'`)이 되지만,
+ *  그 역매핑을 쓰려면 타입을 우회해야 한다 (`as unknown as Record<number, string>`).
+ *  타입 우회는 루트 CLAUDE.md 금지 사항이고, 여기서는 불가피하지도 않다.
+ *  표를 두면 클라이언트에 나가는 문구가 코드에 그대로 보이고, enum 이름 변경에도 영향을 받지 않는다.
+ *  표에 없는 상태는 'Error' 로 떨어진다 (상태 코드가 이미 의미를 전달하므로 문구는 보조 정보다).
+ */
+const STATUS_TITLES: Partial<Record<number, string>> = {
+  [HttpStatus.BAD_REQUEST]: 'Bad Request',
+  [HttpStatus.UNAUTHORIZED]: 'Unauthorized',
+  [HttpStatus.PAYMENT_REQUIRED]: 'Payment Required',
+  [HttpStatus.FORBIDDEN]: 'Forbidden',
+  [HttpStatus.NOT_FOUND]: 'Not Found',
+  [HttpStatus.METHOD_NOT_ALLOWED]: 'Method Not Allowed',
+  [HttpStatus.NOT_ACCEPTABLE]: 'Not Acceptable',
+  [HttpStatus.REQUEST_TIMEOUT]: 'Request Timeout',
+  [HttpStatus.CONFLICT]: 'Conflict',
+  [HttpStatus.GONE]: 'Gone',
+  [HttpStatus.PRECONDITION_FAILED]: 'Precondition Failed',
+  [HttpStatus.PAYLOAD_TOO_LARGE]: 'Payload Too Large',
+  [HttpStatus.URI_TOO_LONG]: 'URI Too Long',
+  [HttpStatus.UNSUPPORTED_MEDIA_TYPE]: 'Unsupported Media Type',
+  [HttpStatus.UNPROCESSABLE_ENTITY]: 'Unprocessable Entity',
+  [HttpStatus.TOO_MANY_REQUESTS]: 'Too Many Requests',
+  [HttpStatus.INTERNAL_SERVER_ERROR]: 'Internal Server Error',
+  [HttpStatus.NOT_IMPLEMENTED]: 'Not Implemented',
+  [HttpStatus.BAD_GATEWAY]: 'Bad Gateway',
+  [HttpStatus.SERVICE_UNAVAILABLE]: 'Service Unavailable',
+  [HttpStatus.GATEWAY_TIMEOUT]: 'Gateway Timeout',
+};
+
 /** PostgreSQL SQLSTATE 코드 중 클라이언트 책임(4xx)으로 분류할 수 있는 것들 */
 const PG_ERROR_TO_STATUS: Record<string, HttpStatus> = {
   '23505': HttpStatus.CONFLICT, // unique_violation
@@ -153,14 +187,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 
   private statusTitle(status: number): string {
-    // HttpStatus enum 의 역매핑: 404 → 'NOT_FOUND' → 'Not Found'
-    const key = (HttpStatus as unknown as Record<number, string | undefined>)[status];
-    if (!key) return 'Error';
-    return key
-      .toLowerCase()
-      .split('_')
-      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-      .join(' ');
+    return STATUS_TITLES[status] ?? 'Error';
   }
 
   private log(exception: unknown, body: ProblemBody, request: Request): void {
