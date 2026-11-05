@@ -61,6 +61,7 @@
 
 - `pnpm lint && pnpm typecheck && pnpm test && pnpm format:check`
 - 모바일 변경: `pnpm mobile:analyze && pnpm mobile:test`
+- 계약(shared-types·Dart 모델) 변경: `pnpm check:contracts`
 - 인프라 변경: `bash scripts/validate-k8s.sh` (dev·prod 모두). 단계를 파이프로 잇지 않으므로 어느 단계가 실패해도 0이 아닌 코드로 끝난다.
   `kustomize build ... | kubeconform ...`을 직접 쓰지 않는다. 그 파이프는 `secrets.env`가 없을 때 아무것도 검증하지 않고 성공으로 끝난다.
 - 실행 확인이 필요하면 `pnpm docker:up` 후 README의 Step 3 검증 명령
@@ -76,7 +77,10 @@
   운영 기본값은 false 다. 헬스 응답에 새 필드를 추가할 때는 상세 정보인지 판단해
   `health-report.redaction.ts` 에서 지울지 정하고, 클라이언트는 그 필드가 없는 경우를 처리한다.
 - Dart 모델(`apps/client-mobile/lib/core/network/api_response.dart`, `features/*/domain`)은 shared-types를 손으로 옮긴 사본이다.
-  계약을 바꾸면 같은 커밋에서 Dart 쪽도 고친다.
+  계약을 바꾸면 같은 커밋에서 Dart 쪽도 고치고, `pnpm check:contracts` 로 확인한다.
+  이 검사는 Zod 스키마의 필드와 Dart 모델이 읽는 JSON 키를 비교한다. 컴파일러가 잡아주지 못하는 어긋남을 여기서 잡는다.
+  새 계약에 Dart 사본을 만들면 `packages/shared-types/src/dart-mirrors.ts` 와
+  `scripts/check-dart-contract.mjs` 의 `MIRRORS` 에 등록한다.
 
 ## 금지
 

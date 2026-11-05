@@ -18,6 +18,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,mts,json,md,yml,yaml}\" --ignore-path .gitignore --ignore-path .prettierignore",
     "scaffold": "node scripts/scaffold-domain.mjs",
     "scaffold:verify": "bash scripts/verify-scaffold.sh",
+    "check:contracts": "pnpm --filter @repo/shared-types build && node scripts/check-dart-contract.mjs",
     "docker:up": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env up -d --build",
     "docker:down": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env down",
     "docker:logs": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env logs -f",

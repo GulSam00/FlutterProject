@@ -18,6 +18,31 @@
 
 ## 기록
 
+### 2026-11-05 · 2026-11-04-generate-dart-contract-models
+
+- 결정: Dart 모델을 **코드 생성하지 않는다.** 대신 Zod → JSON Schema 를 기준으로
+  손으로 쓴 Dart 모델이 계약과 어긋났는지 검사한다 (`pnpm check:contracts`).
+- 대안: ① `@nestjs/swagger` 로 OpenAPI 스펙을 내보내고 `openapi-generator` 로 Dart 생성
+  ② Zod → JSON Schema → `quicktype` 등으로 Dart 생성 ③ 현행 유지(검사도 없음)
+- 이유:
+  - ①은 단일 진실 공급원이 깨진다. 이 저장소의 SSOT 는 shared-types 의 Zod 다. 그런데 Nest 의 OpenAPI 는
+    class-validator DTO 를 반영하므로, 스펙이 Zod 가 아니라 DTO 를 따라간다. 사본이 하나 더 생기는 셈이다.
+    `openapi-generator` 는 Java 런타임도 요구한다.
+  - ②는 SSOT 를 지키지만, 생성된 Dart 가 지금 코드보다 나쁘다. 현재 모델은 패턴 매칭으로 구조를 검증하고
+    어긋나면 `FormatException` → `ContractViolationException` 으로 올려서 "조용히 null 렌더링" 을 막는다.
+    생성기 출력은 보통 관대하거나 `json_serializable` + `build_runner` 를 요구한다.
+    그 동작을 다시 만들려면 생성 후 후처리가 필요하고, Flutter 앱에 빌드 단계가 하나 더 붙는다.
+  - 결정적으로, 실제 위험은 "Dart 를 쓰는 일" 이 아니라 **"Zod 를 고치고 Dart 를 잊는 일"** 이다.
+    그건 탐지 문제이고, 검사 한 파일로 해결된다. 사본 파일은 현재 2개뿐이다.
+  - ③은 이슈의 목적을 포기하는 선택이다. 실제로 드리프트가 이미 1건 있었다
+    (`ProblemDetails.timestamp`) — 검사를 만들자마자 드러났다.
+- 한계 (사용자가 알고 있어야 하는 것): 이 검사는 **필드 이름과 존재 여부만** 본다. 타입(`String` vs `int`),
+  optional 여부, 중첩 구조의 깊은 검증은 하지 않는다. Dart 를 정식으로 파싱하지 않고
+  이 저장소 모델의 작성 관례(`'key':` 패턴 매칭, `map['key']` 접근)에 의존한다.
+  도메인이 10개를 넘고 필드 타입 불일치가 실제로 문제가 되기 시작하면 ②를 다시 검토할 가치가 있다.
+- 되돌리려면: `scripts/check-dart-contract.mjs`, `packages/shared-types/src/dart-mirrors.ts` 를 지우고
+  루트 `package.json` 의 `check:contracts` 와 `CLAUDE.md` 2곳의 안내를 제거하면 된다.
+
 ### 2026-11-05 · 2026-11-04-typed-test-mocks
 
 - 결정: 의존성 없이 직접 만든 `partialMock<T>` 헬퍼를 쓴다. `jest-mock-extended` 는 도입하지 않았다.

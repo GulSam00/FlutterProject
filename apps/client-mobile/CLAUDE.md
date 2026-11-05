@@ -32,6 +32,14 @@ lib/
 - 모델의 `fromJson(Object? json)`은 패턴 매칭으로 구조를 검증하고, 맞지 않으면 `FormatException`을 던진다.
   `DioClient`가 이를 `ContractViolationException`으로 바꾼다. 형식이 틀린 데이터를 null이나 기본값으로 덮지 않는다.
 
+## 계약 사본
+
+- `core/network/api_response.dart` 와 `features/*/domain` 의 모델은 `@repo/shared-types` 의 Zod 스키마를
+  손으로 옮긴 사본이다. 고친 뒤 `pnpm check:contracts` 로 어긋남을 확인한다.
+- 새 모델을 추가하면 `packages/shared-types/src/dart-mirrors.ts` 와
+  `scripts/check-dart-contract.mjs` 의 `MIRRORS` 에 등록한다. 등록하지 않으면 검사 대상에서 빠진다
+  (검사가 "등록되지 않은 계약" 도 실패로 보고한다).
+
 ## 상태와 에러
 
 - 상태 관리는 `AsyncNotifier` + `AsyncNotifierProvider.autoDispose`를 쓴다. `StateNotifier`, `ChangeNotifier`는 쓰지 않는다.

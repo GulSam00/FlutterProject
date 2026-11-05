@@ -66,6 +66,7 @@ final class ProblemDetails {
     this.detail,
     this.instance,
     this.requestId,
+    this.timestamp,
     this.errors = const [],
     this.details,
   });
@@ -86,6 +87,7 @@ final class ProblemDetails {
         detail: map['detail'] as String?,
         instance: map['instance'] as String?,
         requestId: map['requestId'] as String?,
+        timestamp: _tryParseTimestamp(map['timestamp']),
         errors: rawErrors is List<Object?> ? rawErrors.map(FieldError.fromJson).toList() : const [],
         details: map['details'],
       );
@@ -98,9 +100,18 @@ final class ProblemDetails {
   final int status;
   final String? detail;
   final String? instance;
+
+  /// 서버가 에러를 만든 시각. 장애 보고 시 서버 로그와 맞춰 보기 위해 보존한다.
+  final DateTime? timestamp;
   final String? requestId;
   final List<FieldError> errors;
 
   /// 도메인별 추가 컨텍스트. 소비 측에서 별도로 디코딩한다.
   final Object? details;
 }
+
+/// problem+json 의 `timestamp` 파싱.
+///
+/// `tryParse` 로 받는다. 에러 응답을 파싱하다 또 예외를 던지면, 원래 에러의 원인이 가려진다.
+/// 형식이 깨졌다면 시각만 포기하고 나머지 정보는 살린다.
+DateTime? _tryParseTimestamp(Object? value) => value is String ? DateTime.tryParse(value) : null;

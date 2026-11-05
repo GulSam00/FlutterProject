@@ -3,6 +3,10 @@
 /// 이 파일은 TypeScript 계약의 손 사본이다. 자동 생성되지 않으므로
 /// `packages/shared-types/src/__kebab__.ts` 를 고치면 같은 커밋에서 여기도 고친다.
 ///
+/// 어긋남을 자동으로 잡으려면 이 모델을 드리프트 검사에 등록한다 (`pnpm check:contracts`):
+///   1. `packages/shared-types/src/dart-mirrors.ts` 의 `DART_MIRRORED_CONTRACTS` 에 `__Pascal__Schema` 추가
+///   2. `scripts/check-dart-contract.mjs` 의 `MIRRORS` 에 이 파일과 클래스 이름 추가
+///
 /// `fromJson` 은 패턴 매칭으로 구조를 검증하고, 맞지 않으면 [FormatException] 을 던진다.
 /// 형식이 틀린 데이터를 기본값으로 덮으면 서버·앱 버전 불일치가 조용히 넘어가고,
 /// 화면에는 빈 값이 그려진다. DioClient 가 이 예외를 ContractViolationException 으로 바꾼다.
