@@ -88,6 +88,11 @@ jobs:
     needs: plan
     if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
+    # next build 는 NEXT_PUBLIC_* 를 빌드 시점에 번들에 인라인하므로 값이 있어야 한다.
+    # 검증용 자리표시자다 (Dockerfile.web 의 ARG 기본값과 같은 역할). 실제 배포는 환경별로 다시 빌드한다.
+    env:
+      NEXT_PUBLIC_API_URL: http://api.local.dev
+      API_INTERNAL_URL: http://server-api:3000
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -152,6 +157,11 @@ jobs:
     needs: plan
     if: needs.plan.outputs.run == 'true'
     runs-on: ubuntu-latest
+    # next build 는 NEXT_PUBLIC_* 를 빌드 시점에 번들에 인라인하므로 값이 있어야 한다.
+    # 검증용 자리표시자다 (Dockerfile.web 의 ARG 기본값과 같은 역할). 실제 배포는 환경별로 다시 빌드한다.
+    env:
+      NEXT_PUBLIC_API_URL: http://api.local.dev
+      API_INTERNAL_URL: http://server-api:3000
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4

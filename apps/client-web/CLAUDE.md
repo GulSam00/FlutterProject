@@ -49,3 +49,5 @@ src/
   1. `infra/docker/Dockerfile.web`의 `ARG` / `ENV`. 빠뜨리면 이미지 안에서는 값이 비어 있다.
   2. `.env.example`
 - `process.env.NEXT_PUBLIC_X`는 리터럴로 접근한다. `process.env[key]`처럼 동적으로 접근하면 치환되지 않는다.
+- `next build` 는 `NEXT_PUBLIC_API_URL` 이 없으면 실패한다 (모듈 로드 시점에 검증한다). 의도된 동작이다.
+  로컬은 `.env.local`, CI·Docker 는 환경변수·build arg 로 넘긴다. 없을 때의 에러 메시지가 그 방법을 안내한다.

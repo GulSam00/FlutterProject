@@ -96,6 +96,11 @@ fi
 
 ```bash
 pnpm install                 # 워크스페이스 전체 의존성 (lockfile 기준)
+
+# 웹 빌드에 필요한 환경변수. NEXT_PUBLIC_* 는 빌드 시점에 번들에 인라인되므로 빌드 전에 있어야 한다.
+cp apps/client-web/.env.example apps/client-web/.env.local
+cp apps/server-api/.env.example apps/server-api/.env
+
 pnpm build                   # shared-types → server-api / client-web 순서로 위상 정렬 빌드
 pnpm lint && pnpm typecheck && pnpm test
 ```
