@@ -7,6 +7,16 @@
 #     → 컨테이너 이름으로 DNS 해석(postgres, redis, server-api ...), 호스트의 다른 컨테이너와 분리
 #   - 외부(호스트)로 노출되는 진입점은 Nginx(80) 하나뿐이다. 앱 컨테이너는 `expose` 만 사용.
 #   - DB/Redis 는 로컬 디버깅(GUI 툴) 용도로 127.0.0.1 에만 바인딩 → 같은 네트워크의 다른 기기에서 접근 불가
+#
+# 프록시 환경 (사내 프록시, Claude 클라우드 세션 등)
+#   빌드 컨테이너는 호스트의 DNS·프록시 설정을 물려받지 않는다. 그래서 Dockerfile 의 `apk add` 가
+#   "dl-cdn.alpinelinux.org ... DNS: name does not exist" 로 실패한다 (호스트에서는 같은 URL 이 열려 있어도).
+#   아래 build.args 로 프록시를 넘기고, 프록시가 루프백 주소(127.0.0.1:xxxx)라면 빌드 네트워크도 호스트로 둔다.
+#     export DOCKER_BUILD_NETWORK=host          # 프록시가 127.0.0.1 일 때만 필요
+#     pnpm docker:up                            # HTTP(S)_PROXY 는 셸 환경변수에서 그대로 전달된다
+#   HTTP_PROXY/HTTPS_PROXY/NO_PROXY 는 Docker 가 미리 정의한 빌드 인자다. Dockerfile 에 ARG 선언이 필요 없고,
+#   최종 이미지의 환경변수로도 남지 않는다 (프록시 주소가 이미지에 박히는 것을 막아 준다).
+#   프록시가 없는 환경에서는 세 값이 빈 문자열이고 network 는 default 이므로 동작이 달라지지 않는다.
 # ─────────────────────────────────────────────────────────────────────────────
 name: ${COMPOSE_PROJECT_NAME:-boilerplate}
 
@@ -75,6 +85,12 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.server
+      # 프록시 환경 지원. 아래 "프록시 환경" 주석 참조. 값이 비어 있으면 아무 영향이 없다.
+      network: ${DOCKER_BUILD_NETWORK:-default}
+      args:
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
     image: boilerplate/server-api:local
     restart: unless-stopped
     environment:
@@ -118,8 +134,12 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile.web
+      network: ${DOCKER_BUILD_NETWORK:-default}
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.local.dev}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-}
     image: boilerplate/client-web:local
     restart: unless-stopped
     environment:

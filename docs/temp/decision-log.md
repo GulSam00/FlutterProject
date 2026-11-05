@@ -18,6 +18,25 @@
 
 ## 기록
 
+### 2026-11-05 · 2026-11-04-docker-compose-build-blocked-by-proxy
+
+- 결정: 빌드를 `scripts/docker-up.sh` 로 옮기고, 호스트 네트워크가 필요할 때만 `docker buildx bake` 를 직접 부른다.
+  Dockerfile 은 고치지 않았다. 그리고 전체 스택 검증이 환경 제약으로 불가능하므로 이슈를 `blocked` 로 둔다.
+- 대안: ① Dockerfile 에서 `apk` 의존성(tini, libc6-compat)을 제거해 프록시 문제를 피한다
+  ② 프록시 환경 전용 compose override 파일 ③ `~/.docker/config.json` 의 `proxies` 설정만 안내
+- 이유:
+  - ①은 tini 를 없애는 것이고, 그러면 종료 신호 전달이 깨진다
+    (`2026-11-04-verify-tini-signal-handling` 에서 확인한 동작이다). 범위 밖으로 명시해 둔 이유다.
+  - ②는 파일이 하나 더 늘고, 프록시 환경 사용자가 매번 두 파일을 지정해야 한다.
+    `DOCKER_BUILD_NETWORK` 환경변수 하나로 분기하는 쪽이 간단하다.
+  - ③은 `apk`/`pnpm` 이 프록시를 쓰게 하지만, 프록시가 루프백 주소면 빌드 컨테이너가 그 주소에 닿지 못한다.
+    호스트 네트워크가 필요하고, 그게 compose 가 넘기지 못하는 플래그를 요구한다.
+  - `blocked` 로 두는 이유: 완료 조건의 "5개 서비스 healthy" 를 확인하지 못했다. 규칙 7 대로 `done` 으로 올리지 않는다.
+    앞선 toolchain 이슈처럼 설계로 블로커를 없앨 수 있는 성격이 아니다 —
+    컨테이너가 패키지 레지스트리에 닿지 못하면 어떤 Dockerfile 도 빌드될 수 없다.
+- 되돌리려면: compose 의 `network`/프록시 args 와 `scripts/docker-up.sh` 를 지우고
+  `docker:up` 을 원래 `docker compose up -d --build` 로 돌리면 된다. 프록시 환경에서는 다시 실패한다.
+
 ### 2026-11-05 · 2026-11-04-session-start-toolchain-hook (재개)
 
 - 결정: 이 이슈를 `blocked` 로 두는 대신, **블로커 자체를 없애는 쪽**으로 설계를 바꿨다.
