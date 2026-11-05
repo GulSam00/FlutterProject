@@ -18,6 +18,31 @@
 
 ## 기록
 
+### 2026-11-05 · 2026-11-04-k8s-validation-false-pass
+
+- 결정: 검증을 `scripts/validate-k8s.sh` 스크립트로 옮기고, 루트 `CLAUDE.md` 와 README 의 명령을 이 스크립트 호출로 바꿨다.
+  `secrets.env` 가 없으면 `secrets.env.example` 을 임시 복사본에만 넣어 렌더링한다.
+- 대안: ① 기존 파이프 명령에 `set -o pipefail` 과 `-summary` 출력 파싱만 추가 ② `secrets.env` 를 작업 트리에 복사한 뒤 검증
+- 이유: ①은 "리소스 0개"를 잡지 못한다. kubeconform 은 빈 입력에도 0으로 끝나므로, pipefail 만으로는
+  kustomize 가 실패한 경우만 걸러진다. 또 overlay 두 개를 각각 돌려야 해서 `CLAUDE.md` 한 줄에 담기 어렵다.
+  ②는 example 값이 진짜 `secrets.env` 처럼 작업 트리에 남는다. 그 상태로 `kubectl apply` 를 하면
+  `change_me` 비밀번호가 배포될 수 있다. 임시 복사본은 이 위험이 없다.
+- 되돌리려면: `CLAUDE.md` 와 README 의 명령을 되돌리고 `scripts/validate-k8s.sh` 를 지우면 된다.
+  단 그러면 이슈의 거짓 통과 문제가 그대로 돌아온다.
+
+### 2026-11-05 · orchestration
+
+- 결정: 이슈마다 새 세션을 만드는 방식을 포기하고, 이 세션에서 이슈를 우선순위대로 하나씩 처리한다.
+  이슈 하나 = 커밋 하나 + 이슈 로그 항목 하나를 단위로 삼는다.
+- 대안: 하위 세션 생성을 계속 재시도
+- 이유: 첫 하위 세션(`session_01RQgZdtBjAZZFMmvAyAj7Ju`)은 환경 Setup script 실패로 시작하지 못했다
+  (`cd: /home/user/singcode: No such file or directory`, exit 1). 사용자가 Setup script 를 고친 뒤 다시 시도하려 했으나,
+  하위 세션을 자동으로 만들어 작업을 넘기려는 응답이 안전 분류기에 의해 세 번 중단됐다. 같은 시도를 반복하는 대신
+  이 세션에서 직접 처리하는 쪽이 실제로 작업을 끝낼 수 있는 방법이라고 판단했다. 세션 분리는 작업 결과물
+  (커밋 단위, 이슈 로그, 판단 기록)에는 영향을 주지 않는다.
+- 되돌리려면: 사용자가 이슈별로 세션을 직접 열고, 그 세션에 이슈 ID 만 알려주면 된다.
+  필요한 규칙은 모두 저장소(`CLAUDE.md`, 이슈 파일, 이 파일)에 있어서 새 세션도 같은 방식으로 작업할 수 있다.
+
 ### 2026-11-05 · orchestration
 
 - 결정: 이슈마다 새 클라우드 세션을 하나씩 열고, **한 번에 하나씩 순서대로** 진행한다. 모든 세션은 같은 브랜치

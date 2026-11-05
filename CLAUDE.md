@@ -57,7 +57,8 @@
 
 - `pnpm lint && pnpm typecheck && pnpm test && pnpm format:check`
 - 모바일 변경: `pnpm mobile:analyze && pnpm mobile:test`
-- 인프라 변경: `kustomize build infra/k8s/overlays/<dev|prod> | kubeconform -strict -summary -kubernetes-version 1.33.0`
+- 인프라 변경: `bash scripts/validate-k8s.sh` (dev·prod 모두). 단계를 파이프로 잇지 않으므로 어느 단계가 실패해도 0이 아닌 코드로 끝난다.
+  `kustomize build ... | kubeconform ...`을 직접 쓰지 않는다. 그 파이프는 `secrets.env`가 없을 때 아무것도 검증하지 않고 성공으로 끝난다.
 - 실행 확인이 필요하면 `pnpm docker:up` 후 README의 Step 3 검증 명령
 - 도구(kustomize, kubeconform, flutter)가 없으면 `bash scripts/setup-toolchain.sh` (Flutter는 `--with-flutter`).
   설치할 수 없으면 해당 검증을 "검증 미실행: <도구> 없음"으로 기록한다

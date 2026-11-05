@@ -195,11 +195,17 @@ $COMPOSE down -v        # 데이터 볼륨까지 삭제
 ## 4. Kubernetes 배포 (Phase 3)
 
 ```bash
+# 매니페스트 검증 (배포 전에 먼저 실행). secrets.env 가 없으면 example 을 임시 복사본에만 넣어 렌더링한다.
+bash scripts/validate-k8s.sh              # dev prod 둘 다 / 특정 overlay 만: validate-k8s.sh dev
+
 cp infra/k8s/overlays/dev/secrets.env.example infra/k8s/overlays/dev/secrets.env   # 커밋 금지(.gitignore)
 kubectl kustomize infra/k8s/overlays/dev              # 렌더링 결과 확인
 kubectl apply -k infra/k8s/overlays/dev
 kubectl -n app-dev rollout status deploy/server-api
 ```
+
+> ⚠️ 검증은 반드시 `scripts/validate-k8s.sh`로 하세요. `kustomize build ... | kubeconform ...` 파이프는
+> `secrets.env`가 없을 때 kustomize가 실패하는데도 kubeconform이 "0 resources"로 성공 코드를 내서 거짓 통과합니다.
 
 | 리소스             | 핵심 설정                                                   | 예방하는 운영 리스크                                   |
 | ------------------ | ----------------------------------------------------------- | ------------------------------------------------------ |
