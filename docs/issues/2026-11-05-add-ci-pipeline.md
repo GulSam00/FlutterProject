@@ -59,7 +59,7 @@ updated: 2026-11-05
     `Invalid input: expected string, received undefined` → `Failed to collect page data for /health`.
     로컬은 gitignore 된 `.env.local` 때문에 통과하고 있었고, 새 clone 은 같은 벽에 막힌다
     → 빌드하는 job 에 `NEXT_PUBLIC_API_URL`·`API_INTERNAL_URL` 자리표시자 추가,
-      `env.ts` 의 에러 메시지에 해결 방법 명시, README Step 1 에 예시 env 복사 추가
+    `env.ts` 의 에러 메시지에 해결 방법 명시, README Step 1 에 예시 env 복사 추가
   - run #4 **success** (전체 2분 14초). 이 커밋은 `apps/client-web/src/lib/env.ts` 를 바꿨으므로
     계약·모바일·K8s job 은 정확히 skipped
   - 로컬: `bash scripts/validate-issues.sh` → 이슈 12개 통과. 위반 3종(체크 안 된 완료 조건, id 불일치,
