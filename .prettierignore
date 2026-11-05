@@ -1,0 +1,12 @@
+# 생성 파일은 포맷 대상이 아니다.
+# pnpm-lock.yaml 을 포맷하면 `pnpm install` 이 다시 쓸 때마다 format:check 가 실패해서,
+# 의존성을 추가한 사람마다 무의미한 포맷 커밋을 만들게 된다.
+pnpm-lock.yaml
+apps/client-mobile/pubspec.lock
+
+# 빌드 산출물·의존성 (format 스크립트는 .gitignore 도 함께 쓰지만, 직접 prettier 를 호출할 때를 위해 둔다)
+node_modules/
+dist/
+.next/
+coverage/
+.turbo/

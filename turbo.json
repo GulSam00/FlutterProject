@@ -38,6 +38,13 @@
       "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
       "outputs": ["coverage/**"]
     },
+    // client-web 은 커버리지를 생성하지 않는다. outputs 를 비워 두지 않으면
+    // 매 실행마다 "no output files found" 경고가 나고, 진짜 캐시 설정 오류와 구분이 안 된다.
+    "@app/client-web#test": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.md"],
+      "outputs": []
+    },
     "dev": {
       "dependsOn": ["^build"],
       // 장기 실행 프로세스는 캐시 불가 / 다른 태스크가 의존할 수 없도록 persistent 지정

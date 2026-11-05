@@ -18,6 +18,34 @@
 
 ## 기록
 
+### 2026-11-05 · 2026-11-04-add-web-test-runner
+
+- 결정: Vitest **5.0.5** 를 쓴다. jsdom·@testing-library 는 들이지 않고 `environment: 'node'` 로 둔다.
+- 대안: ① 서버와 같은 Jest ② 최신 Vitest 5.1.0 ③ jsdom 환경 + @testing-library 까지 한 번에
+- 이유:
+  - ①Jest 는 Next 15 의 ESM·TS 구성에서 설정이 길어진다 (transform, moduleNameMapper, ts-jest/babel).
+    Vitest 는 Vite 의 변환을 그대로 쓰므로 설정이 짧고, 실행도 0.3초대다. 서버는 이미 Jest 로 잘 돌고 있어
+    "저장소 전체가 한 실행기" 라는 가치보다 각 앱에 맞는 도구가 낫다고 봤다.
+  - ②5.1.0 은 출시 3일 뒤였다. 보일러플레이트의 기본 의존성으로 쓰기엔 검증 기간이 짧다.
+    5.0.5 는 3주 지난 같은 메이저의 안정 버전이다.
+  - ③이 이슈의 범위 밖(컴포넌트 렌더링)이고, jsdom 은 느리고 실제 브라우저와 다르게 동작하는 지점이 있다.
+    테스트하려던 대상(api-client, fetchHealthReport)은 DOM 이 필요 없다. 필요해질 때 들이면 된다.
+- 되돌리려면: `apps/client-web/vitest.config.mts` 와 `*.test.ts` 들을 지우고 `package.json` 의
+  `test` 스크립트, `turbo.json` 의 `@app/client-web#test` 항목을 제거하면 된다.
+
+### 2026-11-05 · 2026-11-04-add-web-test-runner
+
+- 결정: `.prettierignore` 를 만들어 `pnpm-lock.yaml` 과 `pubspec.lock` 을 포맷 대상에서 뺐다.
+  이슈 범위 밖이지만 새 이슈로 분리하지 않고 이 커밋에 포함했다.
+- 대안: ① lockfile 을 prettier 로 포맷해 기존 상태 유지 ② 새 이슈로 분리
+- 이유: ①은 `pnpm install` 이 lockfile 을 다시 쓰는 순간 `format:check` 가 또 실패한다.
+  이번에 vitest 를 추가하면서 실제로 겪었고, 의존성을 추가하는 사람마다 반복된다.
+  ②는 이 변경이 "의존성 추가" 라는 이 이슈의 작업 때문에 드러났고, 한 줄 설정이라
+  따로 추적할 가치보다 같이 고치는 편이 낫다고 봤다. 규칙 8 은 "범위 밖 문제" 를 새 이슈로 두라는 것이고,
+  여기서는 이 이슈의 작업이 만든 부작용이라 범위 안으로 판단했다.
+- 되돌리려면: `.prettierignore` 를 지우고 `package.json` 의 `--ignore-path .prettierignore` 를 제거한 뒤
+  `pnpm format` 으로 lockfile 을 다시 포맷하면 된다.
+
 ### 2026-11-05 · 2026-11-04-session-start-toolchain-hook
 
 - 결정: 이 이슈를 `done` 이 아니라 `blocked` 로 둔다. 그리고 남은 사용자 작업을 별도 이슈로 쪼개지 않는다.

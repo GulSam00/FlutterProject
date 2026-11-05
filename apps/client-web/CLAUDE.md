@@ -8,8 +8,10 @@
 - 타입 체크: `pnpm turbo run typecheck --filter=@app/client-web`
   - `tsc`가 `next build`가 만드는 `.next/types`를 읽어서, turbo가 빌드 후에 실행하도록 순서를 고정해 두었다.
     `tsc --noEmit`을 바로 돌리면 빌드 전에는 실패할 수 있다.
-- 테스트: **아직 테스트 실행기가 없다.** 임의로 설치하지 않는다.
-  도입은 `docs/issues/2026-11-04-add-web-test-runner.md`에서 다룬다.
+- 테스트: `pnpm --filter @app/client-web test` (Vitest, `*.test.ts`를 대상 파일 옆에 둔다)
+  - `environment: 'node'` 다. DOM 이 필요 없는 테스트(API 클라이언트·쿼리 계약)만 둔다.
+    컴포넌트 렌더링 테스트를 추가하려면 jsdom 과 `@testing-library/react` 를 먼저 들여야 한다.
+  - 경로 별칭 `@/*` 는 `vitest.config.mts` 의 `resolve.alias` 에도 있다. `tsconfig.json` 만 고치면 테스트가 모듈을 못 찾는다.
 
 ## 구조
 
