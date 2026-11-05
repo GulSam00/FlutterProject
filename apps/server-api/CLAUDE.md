@@ -39,6 +39,16 @@ src/modules/<domain>/
 - `infrastructure/database/base.entity.ts`의 `BaseEntity`를 상속한다 (uuid, 생성·수정 시각, soft delete, 낙관적 잠금 version).
 - 엔티티를 API 응답으로 그대로 반환하지 않는다. 응답용 DTO로 바꿔서 내보낸다 (내부 컬럼 노출과 계약 결합 방지).
 
+## 테스트
+
+- 테스트 더블은 `src/test-support/` 를 쓴다. spec 에서 직접 캐스팅하지 않는다
+  (`as unknown as` 는 메서드 이름이 바뀌어도 통과해서, 실제 코드만 깨진 채 테스트가 녹색으로 남는다).
+  - 클래스 의존성(indicator, service, repository): `partialMock<T>({ ... })`.
+    `T` 에 없는 키나 맞지 않는 시그니처는 컴파일 에러가 된다
+  - Nest 컨텍스트: `createExecutionContext`, `createArgumentsHost`, `createAdapterHarness`.
+    이 인터페이스들은 메서드가 제네릭이라 `Partial<T>` 로 맞출 수 없어서,
+    필요한 단언을 `test-support/nest-context.ts` 한 곳에 모아 두었다
+
 ## DTO와 검증
 
 - 요청 DTO의 **모든 필드에 class-validator 데코레이터가 필요하다.**

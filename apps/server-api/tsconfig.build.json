@@ -4,5 +4,6 @@
     "rootDir": "src",
     "types": ["node"]
   },
-  "exclude": ["node_modules", "dist", "**/*.spec.ts"]
+  // test-support 는 테스트 전용 헬퍼다. 빼지 않으면 dist 와 운영 이미지에 함께 실려 나간다.
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "src/test-support/**"]
 }

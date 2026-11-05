@@ -1,17 +1,14 @@
 import { type CallHandler, type ExecutionContext, StreamableFile } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { firstValueFrom, of } from 'rxjs';
+import { createExecutionContext } from '../../test-support/nest-context';
 import { TransformInterceptor } from './transform.interceptor';
 
 function createContext(): ExecutionContext {
-  return {
-    getType: () => 'http',
-    getHandler: () => () => undefined,
-    getClass: () => class TestController {},
-    switchToHttp: () => ({
-      getRequest: () => ({ originalUrl: '/api/v1/health', requestId: 'req-12345678' }),
-    }),
-  } as unknown as ExecutionContext;
+  // 인터셉터는 originalUrl 과 requestId 만 읽는다. 전체 Request 를 만들 필요가 없다.
+  return createExecutionContext({
+    request: { originalUrl: '/api/v1/health', requestId: 'req-12345678' },
+  });
 }
 
 const handlerOf = <T>(value: T): CallHandler<T> => ({ handle: () => of(value) });

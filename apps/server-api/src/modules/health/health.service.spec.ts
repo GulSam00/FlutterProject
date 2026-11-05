@@ -1,6 +1,7 @@
 import type { ConfigService } from '@nestjs/config';
 import type { DependencyHealth } from '@repo/shared-types';
 import type { AppConfig } from '../../config/env.validation';
+import { partialMock } from '../../test-support/partial-mock';
 import { HealthService } from './health.service';
 import type { DatabaseHealthIndicator } from './indicators/database.health-indicator';
 import { MemoryHealthIndicator } from './indicators/memory.health-indicator';
@@ -16,14 +17,18 @@ function createService(db: DependencyHealth, redis: DependencyHealth): HealthSer
     HEALTH_MEMORY_RSS_THRESHOLD_MB: 1_000_000,
     APP_VERSION: 'test',
   };
-  const config = { get: (key: keyof AppConfig) => values[key] } as unknown as ConfigService<
-    AppConfig,
-    true
-  >;
-  const database = { check: jest.fn().mockResolvedValue(db) } as unknown as DatabaseHealthIndicator;
-  const redisIndicator = {
+  // HealthService 는 `config.get` 하나만 쓴다. 그 메서드만 가진 타입으로 좁혀서 더블을 만들면
+  // ConfigService 의 여러 오버로드를 흉내 내지 않아도 되고, 키 이름 오타는 그대로 잡힌다.
+  const config = partialMock<Pick<ConfigService<AppConfig, true>, 'get'>>({
+    get: (key: keyof AppConfig) => values[key],
+  }) as ConfigService<AppConfig, true>;
+
+  const database = partialMock<DatabaseHealthIndicator>({
+    check: jest.fn().mockResolvedValue(db),
+  });
+  const redisIndicator = partialMock<RedisHealthIndicator>({
     check: jest.fn().mockResolvedValue(redis),
-  } as unknown as RedisHealthIndicator;
+  });
 
   return new HealthService(config, database, redisIndicator, new MemoryHealthIndicator());
 }

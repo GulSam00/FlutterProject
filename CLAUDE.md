@@ -81,7 +81,8 @@
 ## 금지
 
 - TypeScript `any`, `as unknown as` 우회 (불가피하면 근거를 주석으로 남긴다).
-  예외: `*.spec.ts`의 mock 객체 (`docs/issues/2026-11-04-typed-test-mocks.md`에서 제거 예정)
+  테스트 더블은 `apps/server-api/src/test-support/` 의 `partialMock` 과 컨텍스트 빌더를 쓴다.
+  spec 에서 직접 캐스팅하지 않는다 (메서드 이름이 바뀌어도 mock 이 통과해 테스트가 거짓으로 녹색이 된다).
 - TypeORM `synchronize: true`. 스키마 변경은 반드시 migration으로 한다.
 - liveness(`/health/live`)에 의존성 체크 추가. DB 장애 시 모든 Pod가 동시에 재시작된다.
 - HPA가 관리하는 Deployment에 `replicas` 지정

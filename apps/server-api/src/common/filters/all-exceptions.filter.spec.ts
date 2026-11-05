@@ -1,13 +1,7 @@
-import {
-  type ArgumentsHost,
-  HttpException,
-  HttpStatus,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import type { HttpAdapterHost } from '@nestjs/core';
+import { HttpException, HttpStatus, Logger, NotFoundException } from '@nestjs/common';
 import { QueryFailedError } from 'typeorm';
 import { CONTENT_TYPES, PROBLEM_TYPES, type ProblemDetails } from '@repo/shared-types';
+import { createAdapterHarness, createArgumentsHost } from '../../test-support/nest-context';
 import { RequestValidationException } from '../exceptions/problem.exception';
 import { AllExceptionsFilter } from './all-exceptions.filter';
 
@@ -17,25 +11,11 @@ interface ReplyCall {
 }
 
 function createHarness(exposeInternalErrors = false) {
-  const replies: ReplyCall[] = [];
-  const headers = new Map<string, string>();
-  const httpAdapterHost = {
-    httpAdapter: {
-      reply: (_res: unknown, body: ProblemDetails, status: number) => {
-        replies.push({ body, status });
-      },
-      setHeader: (_res: unknown, name: string, value: string) => {
-        headers.set(name.toLowerCase(), value);
-      },
-    },
-  } as unknown as HttpAdapterHost;
-
-  const request = { method: 'GET', originalUrl: '/api/v1/things', requestId: 'req-12345678' };
-  const response = { headersSent: false, end: jest.fn() };
-  const host = {
-    getType: () => 'http',
-    switchToHttp: () => ({ getRequest: () => request, getResponse: () => response }),
-  } as unknown as ArgumentsHost;
+  const { httpAdapterHost, replies, headers } = createAdapterHarness<ProblemDetails>();
+  const host = createArgumentsHost({
+    request: { method: 'GET', originalUrl: '/api/v1/things', requestId: 'req-12345678' },
+    response: { headersSent: false, end: jest.fn() },
+  });
 
   const filter = new AllExceptionsFilter(httpAdapterHost, exposeInternalErrors);
   return { filter, host, replies, headers };

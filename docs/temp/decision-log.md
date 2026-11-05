@@ -18,6 +18,22 @@
 
 ## 기록
 
+### 2026-11-05 · 2026-11-04-typed-test-mocks
+
+- 결정: 의존성 없이 직접 만든 `partialMock<T>` 헬퍼를 쓴다. `jest-mock-extended` 는 도입하지 않았다.
+  단, Nest 컨텍스트 인터페이스는 `partialMock` 으로 다룰 수 없어 전용 빌더(`nest-context.ts`)를 따로 만들었다.
+- 대안: ① `jest-mock-extended` 의 `mock<T>()` ② 모든 spec 에 `as unknown as` 를 유지하고 규칙에 예외를 영구화
+- 이유:
+  - ①은 자동 mock 이라 stub 하지 않은 메서드도 조용히 `undefined` 를 반환한다. 테스트가 "그 메서드를 쓰지 않는다" 고
+    착각하게 만든다. 직접 만든 헬퍼는 채우지 않은 멤버가 `undefined` 라서 호출 즉시 TypeError 로 터진다.
+    보일러플레이트에 의존성을 하나 더 넣는 비용도 있다 (헬퍼는 3줄이다).
+  - ②는 이 이슈의 목적 자체를 포기하는 선택이다.
+  - Nest 컨텍스트에 빌더를 따로 둔 것은 타협이 아니라 구조적 이유다. `getType<TContext extends string>()`
+    같은 제네릭 시그니처에는 구체 반환 구현을 할당할 수 없어 `Partial` 검사가 성립하지 않는다.
+    단언을 없앨 수 없다면, 적어도 한 곳에 모아 이유를 남기고 spec 에서는 반복하지 않게 하는 것이 최선이다.
+- 되돌리려면: `src/test-support/` 를 지우고 spec 을 직접 캐스팅으로 돌리면 된다.
+  그러면 루트 `CLAUDE.md` 에 spec 예외 문장을 다시 넣어야 한다.
+
 ### 2026-11-05 · 2026-11-04-domain-scaffold-generator
 
 - 결정: 의존성 없는 Node 스크립트(`scripts/scaffold-domain.mjs`) + 파일 템플릿으로 만들었다.
