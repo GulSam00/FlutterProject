@@ -1,0 +1,100 @@
+# Monorepo 작업 규칙
+
+## 구조
+
+- `apps/server-api` (NestJS) · `apps/client-web` (Next.js) · `apps/client-mobile` (Flutter, pnpm 워크스페이스 밖)
+- `packages/shared-types` = API 계약의 단일 원천. 응답 구조 변경은 여기부터 시작한다.
+- `docs/issues/` = 작업 이슈 파일. 아래 "이슈 작업 절차"를 반드시 따른다.
+
+## 이슈 작업 절차 (필수)
+
+이슈는 `docs/issues/<YYYY-MM-DD>-<kebab-case-slug>.md` 파일 하나로 관리한다.
+**파일 이름(확장자 제외)이 곧 이슈 ID**이고, frontmatter `id`와 같아야 한다. 날짜는 이슈를 만든 날이다.
+형식은 `docs/issues/_TEMPLATE.md`를 복사해서 쓴다.
+
+1. **이슈가 먼저다.** 동작·설정·API 계약·인프라를 바꾸는 작업은 해당 이슈 파일이 있어야 시작한다.
+   없으면 템플릿으로 새로 만든다. 같은 이름의 파일이 이미 있으면 slug를 더 구체적으로 바꾼다.
+   오타·포맷 수정만 하는 변경은 예외.
+2. **시작할 때:** `## 현재 상태`와 최근 변경 로그를 읽고, `status`를 `in-progress`로, `updated`를 오늘 날짜로 바꾼다.
+3. **변경사항이 생겼을 때 로그를 남긴다.** 커밋마다 남길 필요는 없다. 아래 중 하나가 생겼을 때 남긴다.
+   - 상태가 바뀜 (`todo` / `in-progress` / `blocked` / `done`)
+   - 완료 조건 항목을 체크하거나, 조건 자체를 추가·변경함
+   - 설계·방식을 결정함 (무엇을 고르고 무엇을 버렸는지, 그 이유)
+   - 막히는 문제나 범위 변경을 발견함
+   - 검증을 실행함 (성공이든 실패든)
+
+   새 항목은 `## 변경 로그`의 **맨 위(첫 번째)** 에 넣는다. 최신 항목이 항상 먼저 보이게 한다.
+   로그가 설명하는 코드 변경이 있으면 **그 변경과 같은 커밋에 포함한다.** 형식:
+
+   ```markdown
+   ### YYYY-MM-DD · <브랜치명>
+
+   - 변경: 무엇을 왜 바꿨는지 (주요 파일 경로 포함)
+   - 검증: 실행한 명령 → 실제 결과 (실패했으면 실패 그대로 적는다)
+   - 다음: 남은 작업 또는 막힌 이유 (없으면 "없음")
+   ```
+
+4. **`## 현재 상태`는 항상 최신으로 고쳐 쓴다.** 로그를 남길 때 함께 갱신한다. 지금 어디까지 됐고,
+   무엇이 남았고, 무엇에 막혀 있는지를 3~5줄로 적는다. 이력은 로그에, 현재 상태는 이 섹션에 둔다.
+5. **변경 로그 항목은 고치거나 지우지 않는다.** 정정은 새 항목으로 남긴다.
+   병합 충돌이 나면 양쪽 항목을 모두 남기고, 날짜가 최신인 것이 위로 오게 정렬한다.
+6. **커밋 본문 마지막에 이슈 ID를 trailer로 넣는다.** 예: `Issue: 2026-11-04-restrict-health-detail-exposure`.
+   커밋 해시는 로그에 쓰지 않는다 (같은 커밋 안에서는 해시를 알 수 없다).
+   대신 `git log --grep 'Issue: <id>'`로 찾는다.
+7. **완료 판정:** `## 완료 조건`이 모두 체크되고 검증 명령이 통과했을 때만 `status: done`.
+   검증하지 못한 항목이 있으면 `done`으로 바꾸지 말고, 이유를 로그에 적고 `blocked` 또는 `in-progress`로 둔다.
+8. 범위 밖의 문제를 발견하면 현재 이슈에 섞지 말고 새 이슈 파일을 만든다.
+
+9. **하위 Agent(Explore, Plan 등)의 조사·검증 결과는 메인 세션이 이슈 로그에 기록한다.**
+   하위 Agent의 보고는 대화 안에만 남고 사라진다. 실제로 실행한 명령과 결과만 `검증:`에 적는다.
+
+상태 값: `todo` → `in-progress` → `done` (막히면 `blocked`). 조회:
+`grep -H '^status:' docs/issues/[0-9]*.md`
+
+앱별 규칙은 `apps/<app>/CLAUDE.md`에 있다. 그 앱의 파일을 다룰 때 함께 읽는다.
+
+새 도메인은 `pnpm scaffold <name>` 으로 만든다. 손으로 만들면 계층 구조가 실행마다 달라진다.
+공통 코드(`BaseEntity`, `ApiClient`, `DioClient` 등)를 바꾸면 `scripts/templates/domain/` 도 함께 고치고
+`pnpm scaffold:verify` 로 템플릿이 아직 유효한지 확인한다.
+
+## 검증 (작업 완료 전 실행하고 결과를 변경 로그에 기록)
+
+- `pnpm lint && pnpm typecheck && pnpm test && pnpm format:check`
+- 모바일 변경: `pnpm mobile:analyze && pnpm mobile:test`
+- 계약(shared-types·Dart 모델) 변경: `pnpm check:contracts`
+- 인프라 변경: `bash scripts/validate-k8s.sh` (dev·prod 모두). 단계를 파이프로 잇지 않으므로 어느 단계가 실패해도 0이 아닌 코드로 끝난다.
+  `kustomize build ... | kubeconform ...`을 직접 쓰지 않는다. 그 파이프는 `secrets.env`가 없을 때 아무것도 검증하지 않고 성공으로 끝난다.
+- 실행 확인이 필요하면 `pnpm docker:up` 후 README의 Step 3 검증 명령
+- 도구(kustomize, kubeconform, flutter)는 위 검증 명령이 필요할 때 자동으로 설치한다(`scripts/ensure-tools.sh`).
+  설치까지 실패하면 그 검증을 "검증 미실행: <도구> 없음"으로 기록한다. 실행한 것처럼 적지 않는다
+
+## API 계약 (깨면 클라이언트 3개가 동시에 깨진다)
+
+- 성공 응답 `{ success, data, meta{timestamp, requestId, path} }`은 TransformInterceptor가 감싼다. 컨트롤러에서 직접 감싸지 않는다.
+- 실패 응답은 RFC 7807 problem+json만 쓴다. `ProblemException` 계열로 던지고 `res.status().json()`을 직접 쓰지 않는다.
+- `X-Request-ID`는 Nginx → Nest → 응답·로그까지 전파된다. 새 미들웨어나 프록시가 이 헤더를 지우지 않게 한다.
+- `/health` 응답의 상세 정보(버전·uptime·컴포넌트별 수치)는 `HEALTH_EXPOSE_DETAILS=true` 일 때만 포함된다.
+  운영 기본값은 false 다. 헬스 응답에 새 필드를 추가할 때는 상세 정보인지 판단해
+  `health-report.redaction.ts` 에서 지울지 정하고, 클라이언트는 그 필드가 없는 경우를 처리한다.
+- Dart 모델(`apps/client-mobile/lib/core/network/api_response.dart`, `features/*/domain`)은 shared-types를 손으로 옮긴 사본이다.
+  계약을 바꾸면 같은 커밋에서 Dart 쪽도 고치고, `pnpm check:contracts` 로 확인한다.
+  이 검사는 Zod 스키마의 필드와 Dart 모델이 읽는 JSON 키를 비교한다. 컴파일러가 잡아주지 못하는 어긋남을 여기서 잡는다.
+  새 계약에 Dart 사본을 만들면 `packages/shared-types/src/dart-mirrors.ts` 와
+  `scripts/check-dart-contract.mjs` 의 `MIRRORS` 에 등록한다.
+
+## 금지
+
+- TypeScript `any`, `as unknown as` 우회 (불가피하면 근거를 주석으로 남긴다).
+  테스트 더블은 `apps/server-api/src/test-support/` 의 `partialMock` 과 컨텍스트 빌더를 쓴다.
+  spec 에서 직접 캐스팅하지 않는다 (메서드 이름이 바뀌어도 mock 이 통과해 테스트가 거짓으로 녹색이 된다).
+- TypeORM `synchronize: true`. 스키마 변경은 반드시 migration으로 한다.
+- liveness(`/health/live`)에 의존성 체크 추가. DB 장애 시 모든 Pod가 동시에 재시작된다.
+- HPA가 관리하는 Deployment에 `replicas` 지정
+- Ingress의 snippet annotation (CVE-2025-1974)
+- `NEXT_PUBLIC_*`에 비밀값 (빌드 시 번들에 그대로 들어간다)
+- "나중에 처리" 류의 TODO 주석. 에러는 그 자리에서 구체적으로 처리하거나, 이슈 파일로 남긴다.
+
+## Git
+
+- Conventional Commits (`feat` / `fix` / `chore` / `refactor` / `test` / `docs`), 본문에 `Issue: <id>` trailer
+- 사용자가 요청하기 전에는 PR을 만들지 않는다.

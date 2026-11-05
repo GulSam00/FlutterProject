@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server-api
+spec:
+  template:
+    spec:
+      containers:
+        - name: server-api
+          resources:
+            requests:
+              cpu: 500m
+              memory: 384Mi
+            limits:
+              cpu: '2'
+              memory: 768Mi
+          env:
+            # 메모리 상한 변경 시 힙 상한/헬스 임계치도 함께 조정 (세 값은 항상 한 세트)
+            - name: NODE_OPTIONS
+              value: --max-old-space-size=576
+            - name: HEALTH_MEMORY_RSS_THRESHOLD_MB
+              value: '615'

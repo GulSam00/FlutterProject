@@ -1,0 +1,33 @@
+{
+  "name": "fullstack-boilerplate",
+  "private": true,
+  "description": "Flutter + Next.js + NestJS + PostgreSQL + Redis monorepo boilerplate",
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,mts,json,md,yml,yaml}\" --ignore-path .gitignore --ignore-path .prettierignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,mts,json,md,yml,yaml}\" --ignore-path .gitignore --ignore-path .prettierignore",
+    "scaffold": "node scripts/scaffold-domain.mjs",
+    "scaffold:verify": "bash scripts/verify-scaffold.sh",
+    "check:contracts": "pnpm --filter @repo/shared-types build && node scripts/check-dart-contract.mjs",
+    "docker:up": "bash scripts/docker-up.sh",
+    "docker:down": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env down",
+    "docker:logs": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env logs -f",
+    "infra:up": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env up -d postgres redis",
+    "mobile:analyze": "bash scripts/ensure-tools.sh flutter && cd apps/client-mobile && flutter analyze",
+    "mobile:test": "bash scripts/ensure-tools.sh flutter && cd apps/client-mobile && flutter test"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.11.10"
+  }
+}

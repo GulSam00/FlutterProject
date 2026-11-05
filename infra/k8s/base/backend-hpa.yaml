@@ -1,0 +1,35 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: server-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: server-api
+  # 최소 2: 단일 Pod 는 노드 장애/롤링 업데이트 시 SPOF
+  minReplicas: 2
+  # 상한은 DB 커넥션 예산으로 결정: maxReplicas × DB_POOL_MAX ≤ max_connections - 여유분
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          # requests.cpu 대비 70%. 100% 근처까지 기다리면 새 Pod 부팅(수십 초) 동안 기존 Pod 가 포화된다
+          averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+    scaleDown:
+      # 트래픽이 출렁일 때 늘렸다 줄였다 반복(flapping) 방지: 5분간 낮은 상태가 유지되어야 축소
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60

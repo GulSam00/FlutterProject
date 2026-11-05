@@ -1,0 +1,81 @@
+# syntax=docker/dockerfile:1.7
+# ─────────────────────────────────────────────────────────────────────────────
+# Next.js (apps/client-web) Multi-stage Dockerfile — output: 'standalone'
+# 빌드 컨텍스트: 모노레포 루트  →  docker build -f infra/docker/Dockerfile.web .
+#
+# ⚠️ NEXT_PUBLIC_* 는 빌드 시점에 JS 번들에 인라인된다.
+#    → 환경(dev/stg/prod)마다 --build-arg 로 별도 빌드해야 한다. 런타임 env 로는 바뀌지 않는다.
+#    서버 전용 변수(API_INTERNAL_URL)는 런타임에 주입 가능.
+# ─────────────────────────────────────────────────────────────────────────────
+
+ARG NODE_IMAGE=node:22-alpine
+ARG PNPM_VERSION=10.34.7
+ARG TURBO_VERSION=2.11.10
+
+# ── base ─────────────────────────────────────────────────────────────────────
+FROM ${NODE_IMAGE} AS base
+ARG PNPM_VERSION
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH \
+    CI=true \
+    # 폐쇄망/CI 에서 외부 텔레메트리 호출로 빌드가 지연·실패하지 않도록
+    TURBO_TELEMETRY_DISABLED=1 \
+    NEXT_TELEMETRY_DISABLED=1
+RUN apk add --no-cache libc6-compat \
+ && npm install -g pnpm@${PNPM_VERSION} \
+ && npm cache clean --force
+
+# ── pruner ───────────────────────────────────────────────────────────────────
+FROM base AS pruner
+ARG TURBO_VERSION
+WORKDIR /repo
+RUN npm install -g turbo@${TURBO_VERSION}
+COPY . .
+RUN turbo prune @app/client-web --docker
+
+# ── builder ──────────────────────────────────────────────────────────────────
+FROM base AS builder
+WORKDIR /repo
+
+COPY --from=pruner /repo/out/json/ .
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+COPY --from=pruner /repo/out/full/ .
+
+ARG NEXT_PUBLIC_API_URL=http://api.local.dev
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
+RUN pnpm turbo run build --filter=@app/client-web
+
+# ── runner ───────────────────────────────────────────────────────────────────
+FROM ${NODE_IMAGE} AS runner
+# npm/yarn/corepack 은 런타임에 불필요 → 제거해 취약점 스캔(CVE) 대상과 공격 도구를 줄인다
+# (베이스 레이어에 남으므로 용량은 줄지 않는다. 용량까지 줄이려면 distroless 로 전환)
+RUN apk add --no-cache tini \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /opt/yarn* /usr/local/bin/yarn*
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3001 \
+    HOSTNAME=0.0.0.0
+
+# standalone: server.js + 추적된 최소 node_modules. 모노레포 구조(apps/client-web/...)가 그대로 유지된다
+COPY --from=builder /repo/apps/client-web/.next/standalone ./
+# 정적 자산은 standalone 에 포함되지 않으므로 별도 복사 (CDN 사용 시 생략 가능)
+COPY --from=builder /repo/apps/client-web/.next/static ./apps/client-web/.next/static
+COPY --from=builder /repo/apps/client-web/public ./apps/client-web/public
+
+# 이미지 최적화/ISR 캐시 디렉토리만 쓰기 허용 (나머지는 root 소유 읽기 전용)
+RUN mkdir -p apps/client-web/.next/cache && chown -R node:node apps/client-web/.next/cache
+
+USER node
+EXPOSE 3001
+
+HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3001/ || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "apps/client-web/server.js"]

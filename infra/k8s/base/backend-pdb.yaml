@@ -1,0 +1,10 @@
+# 노드 드레인(클러스터 업그레이드 등) 같은 "자발적 중단" 시 동시에 내려가는 Pod 수 제한
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: server-api
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: server-api

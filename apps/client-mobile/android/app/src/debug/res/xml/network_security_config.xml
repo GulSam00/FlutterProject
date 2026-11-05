@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DEBUG 빌드 전용. 허용 도메인을 명시적으로 제한한다 (전체 cleartext 허용 금지) -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Android 에뮬레이터에서 호스트 머신 -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <!-- Nginx 로컬 프록시 도메인 -->
+        <domain includeSubdomains="true">local.dev</domain>
+    </domain-config>
+</network-security-config>

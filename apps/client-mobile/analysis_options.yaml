@@ -1,0 +1,30 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  # TypeScript strict 모드에 대응하는 Dart 설정: 암묵적 dynamic 을 금지해 런타임 타입 에러를 컴파일 타임으로 끌어올린다
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    missing_return: error
+    unawaited_futures: warning
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+
+linter:
+  rules:
+    - avoid_dynamic_calls
+    - always_declare_return_types
+    - prefer_final_locals
+    - prefer_const_constructors
+    - unawaited_futures
+    - cancel_subscriptions
+    - close_sinks
+    - use_build_context_synchronously
+
+# Dart 3.7+ tall-style formatter: 트레일링 콤마를 포매터가 자동 관리하므로 require_trailing_commas 대신 폭만 지정
+formatter:
+  page_width: 100

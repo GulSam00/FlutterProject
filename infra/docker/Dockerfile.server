@@ -1,0 +1,93 @@
+# syntax=docker/dockerfile:1.7
+# ─────────────────────────────────────────────────────────────────────────────
+# NestJS (apps/server-api) Multi-stage Dockerfile
+# 빌드 컨텍스트: 모노레포 루트  →  docker build -f infra/docker/Dockerfile.server .
+#
+# Stage 구성
+#   base    : Node + pnpm 공통 레이어
+#   pruner  : turbo prune 으로 server-api 에 필요한 워크스페이스만 추출
+#   builder : 의존성 설치(캐시) → 빌드 → 프로덕션 의존성만 분리(pnpm deploy)
+#   runner  : 컴파일 산출물 + prod node_modules 만 포함한 최소 런타임
+#
+# 운영 리스크 예방
+#   - 빌드 도구(TS, Nest CLI, devDeps)가 런타임 이미지에 없음 → 이미지 크기/CVE 표면 축소
+#   - 소스 코드(.ts) 미포함 → 이미지 유출 시 피해 최소화
+#   - non-root 실행 + 코드 파일 root 소유(읽기 전용) → 컨테이너 탈취 시 코드 변조 불가
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 프로덕션에서는 태그 대신 digest(@sha256:...)로 고정해 "같은 태그, 다른 이미지" 공급망 위험을 막는다
+ARG NODE_IMAGE=node:22-alpine
+ARG PNPM_VERSION=10.34.7
+ARG TURBO_VERSION=2.11.10
+
+# ── base ─────────────────────────────────────────────────────────────────────
+FROM ${NODE_IMAGE} AS base
+ARG PNPM_VERSION
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH \
+    CI=true \
+    # 폐쇄망/CI 에서 외부 텔레메트리 호출로 빌드가 지연·실패하지 않도록
+    TURBO_TELEMETRY_DISABLED=1
+# libc6-compat: 일부 네이티브 바이너리(glibc 대상)를 Alpine(musl)에서 실행하기 위함
+RUN apk add --no-cache libc6-compat \
+ && npm install -g pnpm@${PNPM_VERSION} \
+ && npm cache clean --force
+
+# ── pruner ───────────────────────────────────────────────────────────────────
+FROM base AS pruner
+ARG TURBO_VERSION
+WORKDIR /repo
+RUN npm install -g turbo@${TURBO_VERSION}
+COPY . .
+# out/json : package.json 들 + lockfile (의존성 설치 레이어 캐시 키)
+# out/full : 실제 소스
+RUN turbo prune @app/server-api --docker
+
+# ── builder ──────────────────────────────────────────────────────────────────
+FROM base AS builder
+WORKDIR /repo
+
+# 1) 의존성 매니페스트만 먼저 복사 → 소스만 바뀐 경우 install 레이어를 캐시에서 재사용 (빌드 시간 단축)
+COPY --from=pruner /repo/out/json/ .
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# 2) 소스 복사 후 빌드 (^build 의존성인 @repo/shared-types 도 함께 빌드됨)
+COPY --from=pruner /repo/out/full/ .
+RUN pnpm turbo run build --filter=@app/server-api
+
+# 3) 프로덕션 의존성만 포함한 독립 디렉토리 생성 (workspace 패키지는 심볼릭 링크가 아닌 실제 파일로 복사)
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm --filter=@app/server-api deploy --prod --legacy /prod/server
+
+# ── runner ───────────────────────────────────────────────────────────────────
+FROM ${NODE_IMAGE} AS runner
+# tini: PID 1 로 동작하며 SIGTERM 을 Node 에 정확히 전달하고 좀비 프로세스를 수거한다.
+#       (node 가 PID 1 이면 시그널 기본 핸들러가 없어 graceful shutdown 이 동작하지 않을 수 있음)
+# npm/yarn/corepack 은 런타임에 불필요 → 제거해 취약점 스캔(CVE) 대상과 공격 도구를 줄인다
+# (베이스 레이어에 남으므로 용량은 줄지 않는다. 용량까지 줄이려면 distroless 로 전환)
+RUN apk add --no-cache tini \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /opt/yarn* /usr/local/bin/yarn*
+WORKDIR /app
+
+ENV NODE_ENV=production \
+    PORT=3000
+
+# 파일은 root 소유(기본값)로 두고 실행만 node 사용자로 → 런타임에 애플리케이션 코드 변조 불가
+COPY --from=builder /prod/server/package.json ./package.json
+COPY --from=builder /prod/server/node_modules ./node_modules
+COPY --from=builder /prod/server/dist ./dist
+
+# node 이미지에 기본 포함된 비특권 사용자 (uid 1000). k8s securityContext.runAsUser 와 일치시킨다
+USER node
+
+EXPOSE 3000
+
+# Docker/Compose 용 헬스체크 (k8s 에서는 무시되고 probe 가 대신한다)
+# liveness 엔드포인트를 사용: DB 장애로 컨테이너가 재시작 루프에 빠지지 않도록
+HEALTHCHECK --interval=15s --timeout=3s --start-period=30s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/api/v1/health/live || exit 1
+
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD ["node", "dist/main.js"]

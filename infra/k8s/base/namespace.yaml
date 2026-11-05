@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app
+  labels:
+    # Pod Security Admission: 특권 컨테이너, hostPath, root 실행 등을 네임스페이스 단위로 거부
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest

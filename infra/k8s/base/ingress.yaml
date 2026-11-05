@@ -1,0 +1,51 @@
+# Nginx Ingress Controller 기반 호스트 라우팅.
+#
+# ⚠️ 커뮤니티 ingress-nginx(kubernetes/ingress-nginx)는 2026년 3월 유지보수가 종료(retired)되었다.
+#    신규 클러스터는 Gateway API(HTTPRoute) 또는 F5 NGINX Ingress Controller 등 유지되는 구현체를 검토할 것.
+#    아래 spec 은 표준 networking.k8s.io/v1 이므로 컨트롤러 교체 시 annotations 만 바꾸면 된다.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
+    # 업로드 상한 (로컬 Nginx 의 client_max_body_size 와 일치)
+    nginx.ingress.kubernetes.io/proxy-body-size: '10m'
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: '5'
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '60'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '60'
+    # IP 당 초당 요청 제한 (1차 방어선. 정교한 제한은 앱/Redis 레벨에서)
+    nginx.ingress.kubernetes.io/limit-rps: '20'
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: '2'
+    # X-Request-ID 는 ingress-nginx 가 기본으로 생성·전달한다 ($req_id).
+    # configuration-snippet 계열 annotation 은 임의 Nginx 설정 주입 취약점(CVE-2025-1974 등) 때문에 사용하지 않는다.
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.example.com
+        - web.example.com
+      # cert-manager 사용 시: metadata.annotations 에 cert-manager.io/cluster-issuer 추가
+      secretName: app-tls
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: server-api
+                port:
+                  name: http
+    - host: web.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: client-web
+                port:
+                  name: http

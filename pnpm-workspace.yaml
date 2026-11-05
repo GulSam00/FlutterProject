@@ -1,0 +1,13 @@
+# Flutter 앱(apps/client-mobile)은 package.json이 없으므로 pnpm 워크스페이스에 자동으로 포함되지 않는다.
+# (pnpm은 package.json이 있는 디렉토리만 워크스페이스 패키지로 인식)
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# 네이티브 빌드 스크립트(postinstall)를 실행해도 되는 패키지를 명시적으로 허용한다.
+# pnpm 10부터는 기본적으로 의존성의 lifecycle script를 차단한다 → 공급망 공격(악성 postinstall) 완화.
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@tailwindcss/oxide'
+  - 'sharp'
+  - 'unrs-resolver'
