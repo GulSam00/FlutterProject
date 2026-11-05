@@ -159,6 +159,9 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      # verify-scaffold.sh 가 turbo·tsc 를 돌리므로 의존성이 먼저 있어야 한다.
+      # (처음 작성 때 이 단계를 빠뜨려 "shared-types 빌드 실패" 로 CI 가 떨어졌다)
+      - run: pnpm install --frozen-lockfile
       - name: Flutter 설치 (모바일 템플릿도 검증할 때만)
         if: needs.plan.outputs.mobile == 'true'
         run: bash scripts/setup-toolchain.sh --with-flutter
