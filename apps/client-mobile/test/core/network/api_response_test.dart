@@ -67,7 +67,33 @@ void main() {
       },
     });
     expect(report.isHealthy, isFalse);
-    expect(report.redis.status, ComponentStatus.down);
-    expect(report.redis.message, 'timeout after 1500ms');
+    expect(report.version, '0.1.0');
+    expect(report.components?.redis.status, ComponentStatus.down);
+    expect(report.components?.redis.message, 'timeout after 1500ms');
+    expect(report.components?.memory.rssBytes, 100);
+  });
+
+  // 서버가 HEALTH_EXPOSE_DETAILS=false 로 돌면 상세가 빠진 응답이 온다.
+  // 이걸 파싱 오류로 다루면 정상 운영 서버에 붙였을 때 앱이 에러 화면만 띄운다.
+  test('HealthReport.fromJson — 상세 정보가 없는 축약 응답', () {
+    final report = HealthReport.fromJson({'status': 'ok', 'checkedAt': '2026-01-01T00:00:00.000Z'});
+    expect(report.isHealthy, isTrue);
+    expect(report.version, isNull);
+    expect(report.uptime, isNull);
+    expect(report.components, isNull);
+  });
+
+  // 반대로 components 키가 있는데 구조가 틀리면 계약 위반이므로 조용히 넘기지 않는다.
+  test('HealthReport.fromJson — components 구조가 틀리면 FormatException', () {
+    expect(
+      () => HealthReport.fromJson({
+        'status': 'ok',
+        'checkedAt': '2026-01-01T00:00:00.000Z',
+        'components': {
+          'database': {'status': 'up'},
+        },
+      }),
+      throwsA(isA<FormatException>()),
+    );
   });
 }

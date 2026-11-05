@@ -37,29 +37,63 @@ class _ReportView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final components = report.components;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         ListTile(
           leading: _StatusDot(isUp: report.isHealthy),
           title: Text(report.isHealthy ? 'All systems operational' : 'Degraded'),
-          subtitle: Text('v${report.version} · uptime ${report.uptime.inMinutes}m'),
+          subtitle: Text(_summary(report)),
         ),
         const Divider(),
-        _DependencyTile(name: 'PostgreSQL', health: report.database),
-        _DependencyTile(name: 'Redis', health: report.redis),
-        ListTile(
-          leading: _StatusDot(isUp: report.memory.status == ComponentStatus.up),
-          title: const Text('Memory'),
-          subtitle: Text(
-            'RSS ${_mb(report.memory.rssBytes)} / ${_mb(report.memory.rssThresholdBytes)} MB',
+        // 서버가 상세 정보를 공개하지 않는 경우(운영 기본값). 전체 상태까지만 표시한다.
+        if (components == null)
+          const ListTile(
+            leading: Icon(Icons.lock_outline, size: 18),
+            title: Text('Component details not exposed'),
+            subtitle: Text('이 서버는 전체 상태만 공개합니다. 상세 진단은 서버 로그를 확인하세요.'),
+          )
+        else ...[
+          _DependencyTile(name: 'PostgreSQL', health: components.database),
+          _DependencyTile(name: 'Redis', health: components.redis),
+          ListTile(
+            leading: _StatusDot(isUp: components.memory.status == ComponentStatus.up),
+            title: const Text('Memory'),
+            subtitle: Text(_memoryLabel(components.memory)),
           ),
-        ),
+        ],
       ],
     );
   }
 
+  static String _summary(HealthReport report) {
+    final uptime = report.uptime;
+    return [
+      ?report.version.let((v) => 'v$v'),
+      ?uptime.let((u) => 'uptime ${u.inMinutes}m'),
+      'checked ${report.checkedAt.toLocal().toIso8601String()}',
+    ].join(' · ');
+  }
+
+  static String _memoryLabel(MemoryHealth memory) {
+    final rss = memory.rssBytes;
+    if (rss == null) return memory.status == ComponentStatus.up ? 'up' : 'down';
+    final threshold = memory.rssThresholdBytes;
+    final used = _mb(rss);
+    return threshold == null ? 'RSS $used MB' : 'RSS $used / ${_mb(threshold)} MB';
+  }
+
   static String _mb(int bytes) => (bytes / (1024 * 1024)).toStringAsFixed(1);
+}
+
+/// nullable 값을 조건부로 문자열에 끼워 넣기 위한 작은 확장.
+/// `?expr` (null-aware element) 과 함께 쓰면 "값이 있으면 이 항목을 넣는다"를 분기 없이 표현할 수 있다.
+extension _NullableLet<T extends Object> on T? {
+  R? let<R extends Object>(R Function(T value) transform) {
+    final value = this;
+    return value == null ? null : transform(value);
+  }
 }
 
 class _DependencyTile extends StatelessWidget {
@@ -73,7 +107,14 @@ class _DependencyTile extends StatelessWidget {
     return ListTile(
       leading: _StatusDot(isUp: health.status == ComponentStatus.up),
       title: Text(name),
-      subtitle: Text(['${health.latencyMs.toStringAsFixed(2)} ms', ?health.message].join(' · ')),
+      subtitle: Text(
+        [
+          ?health.latencyMs?.toStringAsFixed(2).let((ms) => '$ms ms'),
+          ?health.message,
+          if (health.latencyMs == null && health.message == null)
+            health.status == ComponentStatus.up ? 'up' : 'down',
+        ].join(' · '),
+      ),
     );
   }
 }

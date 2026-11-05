@@ -18,6 +18,36 @@
 
 ## 기록
 
+### 2026-11-05 · 2026-11-04-restrict-health-detail-exposure
+
+- 결정: 차단을 **서버 측 응답 축소**로 구현했다. `HEALTH_EXPOSE_DETAILS`(기본 false)가 false 면 공개 응답은
+  `{status, checkedAt}` 까지만 담는다. 컴포넌트별 up/down 까지 지웠고, 전체 보고서는 서버 로그로 돌렸다.
+- 대안: ① Ingress 에서 `/api/v1/health` 경로 차단 ② 토큰(`X-Health-Token`)을 제시하면 상세 공개
+  ③ 컴포넌트별 up/down 은 공개하고 수치만 숨김
+- 이유:
+  - ①은 표준 Ingress 로는 "거부" 규칙을 쓸 수 없다. `configuration-snippet` 류 annotation 은
+    `CLAUDE.md` 금지 사항(CVE-2025-1974)이라 쓸 수 없고, 더미 서비스로 404 를 내는 구성은 복잡한데
+    모바일 앱 진단 화면(Ingress 경유)까지 같이 막힌다.
+  - ②는 보안 모델이 성립하지 않는다. 웹 진단 화면은 인증이 없어서, 서버 측 토큰으로 상세를 받아 렌더링하면
+    그 페이지를 여는 누구나 상세를 보게 된다. 모바일 앱은 비밀을 안전하게 보관할 수 없다.
+    결국 토큰은 운영자 curl 과 SSR 만 득을 보는데, 관리할 비밀이 하나 늘고 "가려졌다"는 착각을 준다.
+  - ③은 이슈가 지적한 핵심 위험(의존성이 흔들리는 시점을 골라 공격)을 그대로 남긴다.
+    "지금 redis 가 down" 자체가 공격 시점 신호다.
+  - 그래서 공개 엔드포인트는 "트래픽을 받을 수 있는가"(200/503)까지만 답하게 했다. 이게 K8s probe 와
+    로드밸런서가 실제로 필요한 전부다. 원인 추적은 서버 로그와, 신뢰된 환경에서 켜는 상세 모드가 담당한다.
+- 되돌리려면: 상세를 공개하려면 해당 환경의 `HEALTH_EXPOSE_DETAILS=true` 로만 바꾸면 된다
+  (코드 변경 없음). 공개 범위를 ③처럼 "컴포넌트 상태까지"로 넓히려면
+  `apps/server-api/src/modules/health/health-report.redaction.ts` 의 `redactHealthReport` 만 고치면 된다.
+
+### 2026-11-05 · 2026-11-04-restrict-health-detail-exposure
+
+- 결정: dev overlay 에서도 `HEALTH_EXPOSE_DETAILS` 를 켜지 않았다 (base 의 false 를 그대로 쓴다).
+- 대안: dev overlay 에 `HEALTH_EXPOSE_DETAILS=true` 추가
+- 이유: dev 도 `api.dev.example.com` 으로 외부에 노출되는 배포 환경이다. "dev 니까 괜찮다"는 가정이
+  스테이징·시연 환경에서 그대로 새는 경로가 된다. 로컬 compose 는 이미 true 라 개발 경험은 유지된다.
+- 되돌리려면: `infra/k8s/overlays/dev/kustomization.yaml` 의 `configMapGenerator.literals` 에
+  `HEALTH_EXPOSE_DETAILS=true` 한 줄을 추가하면 된다 (`behavior: merge` 라 base 값을 덮어쓴다).
+
 ### 2026-11-05 · 2026-11-04-k8s-validation-false-pass
 
 - 결정: 검증을 `scripts/validate-k8s.sh` 스크립트로 옮기고, 루트 `CLAUDE.md` 와 README 의 명령을 이 스크립트 호출로 바꿨다.

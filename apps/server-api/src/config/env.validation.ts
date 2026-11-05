@@ -95,6 +95,18 @@ export class EnvironmentVariables {
   @IsBoolean()
   DB_RUN_MIGRATIONS = false;
 
+  // ── Health ─────────────────────────────────
+  /**
+   * `/health` 응답에 상세 정보(버전, uptime, 의존성 지연시간, 메모리 수치)를 포함할지.
+   *
+   * 기본값 false: 이 엔드포인트는 인증이 없고 외부에 노출된다. 상세 정보를 흘리면 공격자가
+   * 버전을 특정하거나 의존성이 흔들리는 시점을 골라 공격할 수 있다. K8s probe 는 상태 코드만 쓰므로 영향이 없다.
+   * 로컬·dev 처럼 신뢰된 환경에서만 true 로 켠다.
+   */
+  @ToBoolean()
+  @IsBoolean()
+  HEALTH_EXPOSE_DETAILS = false;
+
   // ── Redis ──────────────────────────────────
   @IsString()
   REDIS_HOST!: string;

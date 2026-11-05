@@ -138,6 +138,7 @@ curl -s http://api.local.dev/api/v1/health/live
 # 3-4. API Readiness (DB + Redis + Memory)
 curl -s -i http://api.local.dev/api/v1/health
 # → HTTP/1.1 200, data.components.{database,redis,memory}.status = "up"
+#   (로컬 compose 는 HEALTH_EXPOSE_DETAILS=true. 운영 기본값 false 에서는 data = {status, checkedAt} 만 온다)
 
 # 3-5. 요청 ID 전파
 curl -s -D - -o /dev/null -H 'X-Request-ID: trace-0001-abcd' http://api.local.dev/api/v1/health/live | grep -i x-request-id
@@ -161,6 +162,8 @@ COMPOSE="docker compose -f infra/docker/docker-compose.local.yml --env-file infr
 $COMPOSE stop redis
 curl -s http://api.local.dev/api/v1/health
 # → {"type":"urn:problem-type:service-unavailable","status":503,"detail":"Unhealthy components: redis","details":{...}}
+#   운영 기본값(HEALTH_EXPOSE_DETAILS=false)에서는 detail 이 "The service is not ready to accept traffic." 이고
+#   details 에도 {status, checkedAt} 만 담긴다. 어떤 의존성이 왜 실패했는지는 서버 로그(WARN Readiness failed)에서 본다
 $COMPOSE start redis
 
 # API 장애 → Nginx 가 HTML 502 대신 RFC 7807 JSON 503 반환, 웹 페이지 셸은 200 유지

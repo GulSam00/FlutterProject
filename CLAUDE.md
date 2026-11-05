@@ -68,6 +68,9 @@
 - 성공 응답 `{ success, data, meta{timestamp, requestId, path} }`은 TransformInterceptor가 감싼다. 컨트롤러에서 직접 감싸지 않는다.
 - 실패 응답은 RFC 7807 problem+json만 쓴다. `ProblemException` 계열로 던지고 `res.status().json()`을 직접 쓰지 않는다.
 - `X-Request-ID`는 Nginx → Nest → 응답·로그까지 전파된다. 새 미들웨어나 프록시가 이 헤더를 지우지 않게 한다.
+- `/health` 응답의 상세 정보(버전·uptime·컴포넌트별 수치)는 `HEALTH_EXPOSE_DETAILS=true` 일 때만 포함된다.
+  운영 기본값은 false 다. 헬스 응답에 새 필드를 추가할 때는 상세 정보인지 판단해
+  `health-report.redaction.ts` 에서 지울지 정하고, 클라이언트는 그 필드가 없는 경우를 처리한다.
 - Dart 모델(`apps/client-mobile/lib/core/network/api_response.dart`, `features/*/domain`)은 shared-types를 손으로 옮긴 사본이다.
   계약을 바꾸면 같은 커밋에서 Dart 쪽도 고친다.
 

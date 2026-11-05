@@ -52,6 +52,9 @@ src/modules/<domain>/
 - Redis는 `REDIS_CLIENT` 토큰으로 주입받는다. `enableOfflineQueue: false`라서 **연결이 끊기면 명령이 즉시 실패한다.**
   호출하는 쪽에서 실패 처리(캐시 미스로 취급하는 등)를 반드시 정한다. 조용히 쌓였다가 한꺼번에 실행되는 일은 없다.
 - 외부 호출에는 `common/utils/with-timeout.ts`로 타임아웃을 건다.
+- 헬스 응답의 노출 범위는 컨트롤러가 `HEALTH_EXPOSE_DETAILS` 로 결정하고, 실제 제거는
+  `modules/health/health-report.redaction.ts` 가 담당한다. 판단을 두 곳에 두면 한쪽을 고칠 때 다른 쪽이 새는 길이 된다.
+  `HealthService` 는 항상 전체 보고서(`FullHealthReport`)를 만들고, 지우는 책임은 컨트롤러에만 있다.
 - readiness(`/health`)에 의존성을 추가하면, 그 의존성이 죽을 때 **모든 Pod가 트래픽에서 빠진다.**
   없어도 일부 기능이 동작하는 의존성은 readiness에 넣지 않는다.
 

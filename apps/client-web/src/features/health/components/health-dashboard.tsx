@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import type { DependencyHealth } from '@repo/shared-types';
+import type { DependencyHealth, MemoryHealth } from '@repo/shared-types';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { browserApiClient } from '@/lib/api/browser-client';
 import { isApiError } from '@/lib/api/api-error';
@@ -47,15 +47,19 @@ export function HealthDashboard() {
     );
   }
 
-  const { database, redis, memory } = data.components;
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex items-center gap-3">
           <StatusBadge status={data.status} />
           <span className="text-sm text-zinc-500">
-            v{data.version} · uptime {formatUptime(data.uptimeSeconds)}
+            {[
+              data.version !== undefined && `v${data.version}`,
+              data.uptimeSeconds !== undefined && `uptime ${formatUptime(data.uptimeSeconds)}`,
+              `checked ${new Date(data.checkedAt).toLocaleTimeString()}`,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs text-zinc-500">
@@ -83,18 +87,22 @@ export function HealthDashboard() {
         </p>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <DependencyCard name="PostgreSQL" health={database} />
-        <DependencyCard name="Redis" health={redis} />
-        <ComponentCard name="Memory" status={memory.status}>
-          <Metric
-            label="RSS"
-            value={`${formatBytes(memory.rssBytes)} / ${formatBytes(memory.rssThresholdBytes)}`}
-          />
-          <Metric label="Heap used" value={formatBytes(memory.heapUsedBytes)} />
-          <Metric label="Heap total" value={formatBytes(memory.heapTotalBytes)} />
-        </ComponentCard>
-      </div>
+      {data.components ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <DependencyCard name="PostgreSQL" health={data.components.database} />
+          <DependencyCard name="Redis" health={data.components.redis} />
+          <ComponentCard name="Memory" status={data.components.memory.status}>
+            <MemoryMetrics memory={data.components.memory} />
+          </ComponentCard>
+        </div>
+      ) : (
+        /* 서버가 HEALTH_EXPOSE_DETAILS=false 로 동작 중(운영 기본값). 공개 응답은 전체 상태까지만 담는다. */
+        <p className="rounded-xl border border-zinc-200 bg-white p-5 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          이 서버는 컴포넌트별 상세 정보를 공개하지 않습니다. 전체 상태만 표시합니다. 상세 진단은
+          서버 로그를 확인하거나, 신뢰된 환경에서{' '}
+          <code className="font-mono">HEALTH_EXPOSE_DETAILS=true</code>로 실행하세요.
+        </p>
+      )}
     </div>
   );
 }
@@ -102,8 +110,34 @@ export function HealthDashboard() {
 function DependencyCard({ name, health }: { name: string; health: DependencyHealth }) {
   return (
     <ComponentCard name={name} status={health.status}>
-      <Metric label="Latency" value={`${health.latencyMs.toFixed(2)} ms`} />
+      {health.latencyMs !== undefined && (
+        <Metric label="Latency" value={`${health.latencyMs.toFixed(2)} ms`} />
+      )}
       {health.message && <Metric label="Reason" value={health.message} />}
     </ComponentCard>
+  );
+}
+
+function MemoryMetrics({ memory }: { memory: MemoryHealth }) {
+  const { rssBytes, rssThresholdBytes, heapUsedBytes, heapTotalBytes } = memory;
+  return (
+    <>
+      {rssBytes !== undefined && (
+        <Metric
+          label="RSS"
+          value={
+            rssThresholdBytes !== undefined
+              ? `${formatBytes(rssBytes)} / ${formatBytes(rssThresholdBytes)}`
+              : formatBytes(rssBytes)
+          }
+        />
+      )}
+      {heapUsedBytes !== undefined && (
+        <Metric label="Heap used" value={formatBytes(heapUsedBytes)} />
+      )}
+      {heapTotalBytes !== undefined && (
+        <Metric label="Heap total" value={formatBytes(heapTotalBytes)} />
+      )}
+    </>
   );
 }

@@ -97,6 +97,8 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_DB: 0
       HEALTH_MEMORY_RSS_THRESHOLD_MB: 400
+      # 로컬 전용. 진단 화면에서 지연시간·메모리를 보기 위해 켠다 (운영 기본값은 false)
+      HEALTH_EXPOSE_DETAILS: 'true'
       # V8 힙 상한을 컨테이너 메모리 상한보다 낮게 → GC 가 먼저 동작해 OOMKill 대신 정상 회수
       NODE_OPTIONS: --max-old-space-size=384
     expose: ['3000']

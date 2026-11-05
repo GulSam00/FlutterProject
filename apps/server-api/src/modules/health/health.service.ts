@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { HealthCheckResult, LivenessResult } from '@repo/shared-types';
 import type { AppConfig } from '../../config/env.validation';
+import type { FullHealthReport, FullLivenessResult } from './health-report.redaction';
 import { DatabaseHealthIndicator } from './indicators/database.health-indicator';
 import { MemoryHealthIndicator } from './indicators/memory.health-indicator';
 import { RedisHealthIndicator } from './indicators/redis.health-indicator';
@@ -27,7 +27,7 @@ export class HealthService {
    * Readiness 진단: 모든 의존성을 "병렬"로 점검한다.
    * 직렬로 하면 최악의 경우 응답시간 = Σ(timeout) 이 되어 probe 타임아웃을 넘긴다.
    */
-  async check(): Promise<HealthCheckResult> {
+  async check(): Promise<FullHealthReport> {
     const [database, redis] = await Promise.all([
       this.database.check(this.timeoutMs),
       this.redis.check(this.timeoutMs),
@@ -50,7 +50,7 @@ export class HealthService {
    * Liveness 진단: 외부 의존성을 절대 확인하지 않는다.
    * DB 장애 시 liveness 가 실패하면 k8s 가 "멀쩡한" 모든 Pod 를 동시에 재시작 → 장애 증폭(cascading failure).
    */
-  liveness(): LivenessResult {
+  liveness(): FullLivenessResult {
     return { status: 'ok', uptimeSeconds: Math.floor(process.uptime()) };
   }
 }
