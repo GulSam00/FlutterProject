@@ -53,6 +53,10 @@
 
 앱별 규칙은 `apps/<app>/CLAUDE.md`에 있다. 그 앱의 파일을 다룰 때 함께 읽는다.
 
+새 도메인은 `pnpm scaffold <name>` 으로 만든다. 손으로 만들면 계층 구조가 실행마다 달라진다.
+공통 코드(`BaseEntity`, `ApiClient`, `DioClient` 등)를 바꾸면 `scripts/templates/domain/` 도 함께 고치고
+`pnpm scaffold:verify` 로 템플릿이 아직 유효한지 확인한다.
+
 ## 검증 (작업 완료 전 실행하고 결과를 변경 로그에 기록)
 
 - `pnpm lint && pnpm typecheck && pnpm test && pnpm format:check`

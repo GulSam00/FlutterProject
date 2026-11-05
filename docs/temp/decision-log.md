@@ -18,6 +18,37 @@
 
 ## 기록
 
+### 2026-11-05 · 2026-11-04-domain-scaffold-generator
+
+- 결정: 의존성 없는 Node 스크립트(`scripts/scaffold-domain.mjs`) + 파일 템플릿으로 만들었다.
+- 대안: ① plop ② Nest schematics ③ LLM Agent(원래 이슈가 버린 안)
+- 이유: 생성 대상이 TypeScript 3곳과 **Dart 1곳**이다. plop·schematics 는 Nest/JS 생태계 쪽만 돕고,
+  Dart 파일 생성은 결국 문자열 치환이다. 템플릿 엔진이 해 주는 일이 치환뿐이라면 의존성을 늘릴 값이 없다.
+  schematics 는 서버 한 곳만 커버해서 "네 곳에 같은 구조" 라는 요구를 못 채운다.
+- 되돌리려면: `scripts/scaffold-domain.mjs`, `scripts/templates/`, `scripts/verify-scaffold.sh` 를 지우고
+  루트 `package.json` 의 `scaffold*` 스크립트와 `CLAUDE.md` 2곳의 안내를 제거하면 된다.
+
+### 2026-11-05 · 2026-11-04-domain-scaffold-generator
+
+- 결정: 생성되는 엔티티에 자리표시자 필드 `name` 을 하나 둔다. 필드가 전혀 없는 뼈대로 만들지 않았다.
+- 대안: 필드 없는 엔티티(컬럼은 `BaseEntity` 상속분만)
+- 이유: 필드가 없으면 생성 결과가 typecheck·lint·test 를 통과하는지 검증할 수 없다
+  (DTO·응답 변환·테스트가 모두 빌 내용이 된다). 그러면 `verify-scaffold.sh` 가 템플릿이 낡았는지 알려주지 못한다.
+  "도메인 로직을 넣지 않는다" 는 원칙은 지킨다. `name` 은 비즈니스 의미가 없는 자리표시자이고,
+  생성된 모든 파일의 머리말 주석이 교체하라고 명시한다.
+- 되돌리려면: 템플릿에서 `name` 관련 줄을 지우면 된다. 단 생성 결과가 검증 가능한 상태가 아니게 된다.
+
+### 2026-11-05 · 2026-11-04-domain-scaffold-generator
+
+- 결정: "CI 에서 템플릿 검증" 완료 조건을 이 이슈에서 떼어 `2026-11-05-add-ci-pipeline` 으로 분리했다.
+  대신 CI 가 호출할 명령(`pnpm scaffold:verify`)을 이 이슈에서 만들고 실제로 통과시켰다.
+- 대안: ① 이 이슈에서 GitHub Actions 워크플로를 함께 만든다 ② CI 없이 조건을 체크 처리
+- 이유: 이 저장소에는 CI 가 전혀 없다(`.github/` 디렉터리 자체가 없다). CI 를 세우는 일은
+  러너 환경·도구 설치·Flutter 설치 조건·이슈 절차 검사까지 걸리는 별도 작업이고,
+  생성기 이슈에 끼워 넣으면 둘 다 흐려진다. ②는 규칙 7 위반이다.
+  검증 자체는 명령으로 만들어 통과시켰으니, 남은 것은 "언제 돌릴지" 뿐이다.
+- 되돌리려면: 새 이슈를 닫고 이 이슈에 CI 작업을 다시 합치면 된다.
+
 ### 2026-11-05 · 2026-11-04-add-web-test-runner
 
 - 결정: Vitest **5.0.5** 를 쓴다. jsdom·@testing-library 는 들이지 않고 `environment: 'node'` 로 둔다.

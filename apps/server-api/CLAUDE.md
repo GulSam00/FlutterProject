@@ -23,8 +23,12 @@ src/modules/<domain>/
 └── entities/*.entity.ts      # 반드시 이 폴더 (아래 "엔티티" 참조)
 ```
 
-- 아직 이 구조를 따르는 참고 구현이 없다. `health` 모듈은 저장소 계층이 없는 예외 모듈이니 따라 하지 않는다.
-  참고 구현은 `docs/issues/2026-11-04-domain-scaffold-generator.md`에서 생성기 템플릿으로 만든다.
+- **새 도메인은 손으로 만들지 않고 생성기를 쓴다**: `pnpm scaffold <name>` (예: `pnpm scaffold order`).
+  server·web·mobile·shared-types 네 곳에 같은 구조를 만들고 `AppModule` 과 shared-types `index.ts` 에 등록까지 한다.
+  복수형이 불규칙이면 `pnpm scaffold person --plural people`, 미리 보려면 `--dry-run`.
+- 구조의 참고 구현은 `scripts/templates/domain/` 이다. 공통 코드를 바꿀 때 템플릿도 같이 고치고
+  `pnpm scaffold:verify` 로 확인한다 (임시 도메인을 만들어 전체 검증 후 되돌린다).
+- `health` 모듈은 저장소 계층이 없는 예외 모듈이니 도메인 구조의 본보기로 삼지 않는다.
 - Data Mapper 패턴만 쓴다. 엔티티에 `save()` 같은 메서드를 붙이는 Active Record 방식은 쓰지 않는다.
 
 ## 엔티티
