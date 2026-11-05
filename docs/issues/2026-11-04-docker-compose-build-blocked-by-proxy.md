@@ -1,7 +1,7 @@
 ---
 id: 2026-11-04-docker-compose-build-blocked-by-proxy
 title: 프록시 환경에서 pnpm docker:up 의 이미지 빌드가 실패한다
-status: blocked
+status: done
 priority: P2
 area: [infra]
 created: 2026-11-05
@@ -12,12 +12,11 @@ updated: 2026-11-05
 
 ## 현재 상태
 
-compose·스크립트·문서 작업은 끝났다. 이 방식으로 **두 이미지가 실제로 빌드되는 것을 확인했다**(이 세션 중).
+완료. `pnpm docker:up` 이 프록시 환경에서 성공하고 5개 서비스가 모두 healthy 다.
 
-**막혀 있음**: 전체 스택(5개 서비스 healthy) 검증은 지금 환경에서 완료할 수 없다.
-도중에 컨테이너의 외부 egress 가 막혔다. 호스트에서 `registry.npmjs.org` 는 200 인데,
-컨테이너(호스트 네트워크 포함)에서는 `Connection reset by peer` 다. 그래서 빌더의 `pnpm install` 이 끝나지 않는다.
-저장소 설정 문제가 아니라 이 샌드박스의 네트워크 조건이다. 컨테이너 egress 가 열린 환경에서 재확인이 필요하다.
+막혀 있던 원인은 환경이 아니라 **설정이었다**: 호스트의 `NO_PROXY` 를 빌드 컨테이너에 그대로 물려주고 있었다.
+그 목록에 `registry.npmjs.org` 가 있어 빌더가 레지스트리로 직접 나가려 했고, 컨테이너 직접 egress 가 막힌
+환경에서는 `pnpm install` 이 끝나지 않았다. 빌드용 `NO_PROXY` 기본값을 루프백뿐으로 바꿔 해결했다.
 
 ## 배경
 
@@ -41,13 +40,39 @@ compose 가 그 옵션을 주지 않는 것이 유일한 차이다.
 - [x] 방식 결정을 변경 로그에 기록 (compose 가 bake 의 `--allow` 를 넘기지 못하는 문제와 그 해법)
 - [x] 프록시가 없는 환경에서 동작이 달라지지 않음: `docker compose config` 로 확인 →
       `network: default`, 프록시 args 는 빈 문자열. 빈 값의 미리 정의된 프록시 build arg 는 무효과다
-- [ ] 두 이미지 빌드 후 5개 서비스가 모두 healthy 인지 확인 — **환경 제약으로 미검증** (위 "현재 상태" 참조)
+- [x] 두 이미지 빌드 후 5개 서비스가 모두 healthy 인지 확인
 
 ## 범위 밖
 
 - Dockerfile 에서 `apk` 의존성(tini, libc6-compat) 제거. tini 는 종료 신호 전달에 필요하다
 
 ## 변경 로그
+
+### 2026-11-05 · claude/festive-franklin-pk7qxz
+
+- 변경: 앞선 로그에서 "환경 제약" 이라고 적었던 블로커의 진짜 원인을 찾아 고쳤다.
+  - 호스트의 `NO_PROXY` 를 빌드 args 로 넘기던 것을 중단하고,
+    `NO_PROXY`/`no_proxy` 기본값을 `localhost,127.0.0.1` 로 바꿨다 (`DOCKER_BUILD_NO_PROXY` 로 재지정 가능).
+    `NO_PROXY` 는 "이 호스트가 직접 갈 수 있는 곳" 목록이고, 빌드 컨테이너의 도달 범위는 다르다.
+    그걸 물려주면 빌더가 갈 수 없는 곳으로 직접 나가려 한다
+  - 소문자 `http_proxy`/`https_proxy`/`no_proxy` 도 함께 넘긴다 (대문자만 읽지 않는 도구가 있다).
+    YAML 앵커로 두 서비스가 같은 args 를 공유한다
+  - compose 헤더에 이 함정을 설명으로 남겼다 (증상이 "해석은 끝나고 다운로드가 0인 채로 멈춘다" 라서 원인을 짚기 어렵다)
+- 검증:
+  - 원인 규명: 프록시가 MITM 이 아니라 단순 CONNECT 터널임을 확인했다
+    (`curl --proxy ... --noproxy "" https://registry.npmjs.org/zod` → CA 없이 200).
+    그래서 `no_proxy` 에서 레지스트리만 빼면 컨테이너도 레지스트리에 닿는다 —
+    `docker run --network host -e https_proxy=... -e no_proxy=localhost,127.0.0.1 node:22-alpine npm view zod version` → `4.6.7`.
+    같은 컨테이너가 프록시 없이는 `Connection reset by peer` 였다
+  - `DOCKER_BUILD_NETWORK=host pnpm docker:up` → exit 0.
+    두 이미지 빌드 성공, **5개 서비스 모두 healthy**
+    (client-web / nginx / postgres / redis / server-api)
+  - Nginx 경유 통신 확인: `/nginx-health` 200, `api.local.dev/api/v1/health` 200,
+    `X-Request-ID: trace-verify-0001` 전파, `web.local.dev/health` SSR 200 에 컴포넌트 카드
+    (PostgreSQL·Redis·Memory·Latency·v0.1.0) 렌더링, 알 수 없는 Host → 연결 종료(444),
+    모바일 포트 `:8080` 은 Host 없이 200
+  - `pnpm docker:down` 으로 정리
+- 다음: 없음
 
 ### 2026-11-05 · claude/festive-franklin-pk7qxz
 

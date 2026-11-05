@@ -14,6 +14,12 @@
 #   아래 build.args 로 프록시를 넘기고, 프록시가 루프백 주소(127.0.0.1:xxxx)라면 빌드 네트워크도 호스트로 둔다.
 #     export DOCKER_BUILD_NETWORK=host          # 프록시가 127.0.0.1 일 때만 필요
 #     pnpm docker:up                            # HTTP(S)_PROXY 는 셸 환경변수에서 그대로 전달된다
+#
+#   ⚠️ 호스트의 NO_PROXY 는 **물려주지 않는다.** NO_PROXY 는 "이 호스트가 직접 갈 수 있는 곳" 목록이고,
+#   빌드 컨테이너의 도달 범위는 다르다. 호스트의 NO_PROXY 에 registry.npmjs.org 가 있으면 빌더가 레지스트리로
+#   직접 나가려 하고, 컨테이너 직접 egress 가 막힌 환경에서는 pnpm install 이 끝나지 않는다
+#   (해석은 끝나고 다운로드가 0인 채로 멈춘다). 그래서 빌드용 기본값은 루프백뿐이고,
+#   정말 우회할 곳이 있으면 DOCKER_BUILD_NO_PROXY 로 직접 지정한다.
 #   HTTP_PROXY/HTTPS_PROXY/NO_PROXY 는 Docker 가 미리 정의한 빌드 인자다. Dockerfile 에 ARG 선언이 필요 없고,
 #   최종 이미지의 환경변수로도 남지 않는다 (프록시 주소가 이미지에 박히는 것을 막아 준다).
 #   프록시가 없는 환경에서는 세 값이 빈 문자열이고 network 는 default 이므로 동작이 달라지지 않는다.
@@ -87,10 +93,14 @@ services:
       dockerfile: infra/docker/Dockerfile.server
       # 프록시 환경 지원. 아래 "프록시 환경" 주석 참조. 값이 비어 있으면 아무 영향이 없다.
       network: ${DOCKER_BUILD_NETWORK:-default}
-      args:
+      args: &proxy-build-args
         HTTP_PROXY: ${HTTP_PROXY:-}
         HTTPS_PROXY: ${HTTPS_PROXY:-}
-        NO_PROXY: ${NO_PROXY:-}
+        http_proxy: ${HTTP_PROXY:-}
+        https_proxy: ${HTTPS_PROXY:-}
+        # 호스트의 NO_PROXY 를 그대로 물려주지 않는다. 자세한 이유는 헤더의 "프록시 환경" 주석 참조.
+        NO_PROXY: ${DOCKER_BUILD_NO_PROXY:-localhost,127.0.0.1}
+        no_proxy: ${DOCKER_BUILD_NO_PROXY:-localhost,127.0.0.1}
     image: boilerplate/server-api:local
     restart: unless-stopped
     environment:
@@ -136,10 +146,8 @@ services:
       dockerfile: infra/docker/Dockerfile.web
       network: ${DOCKER_BUILD_NETWORK:-default}
       args:
+        <<: *proxy-build-args
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.local.dev}
-        HTTP_PROXY: ${HTTP_PROXY:-}
-        HTTPS_PROXY: ${HTTPS_PROXY:-}
-        NO_PROXY: ${NO_PROXY:-}
     image: boilerplate/client-web:local
     restart: unless-stopped
     environment:
