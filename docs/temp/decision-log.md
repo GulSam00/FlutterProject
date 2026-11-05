@@ -18,6 +18,18 @@
 
 ## 기록
 
+### 2026-11-05 · 2026-11-04-verify-tini-signal-handling
+
+- 결정: Alpine 저장소가 막힌 문제를 **빌드 옵션**(`--network=host` + 프록시 build-arg)으로 우회해 검증했다.
+  Dockerfile 은 한 줄도 고치지 않았다.
+- 대안: ① 처음 구축 때처럼 `apk` 줄을 뺀 사본으로 빌드 ② 이슈를 `blocked` 로 두고 넘김
+- 이유: ①은 검증 대상(tini)을 빼고 검증하는 것이라 이 이슈의 목적을 달성하지 못한다.
+  처음 구축 때 이 항목이 미검증으로 남은 이유가 바로 그것이었다.
+  ②는 호스트에서 저장소 접근이 가능한 것을 확인한 뒤라면 성급하다. 빌드 컨테이너에 프록시만 전달하면 되는 문제였다.
+  커밋된 Dockerfile 그대로 빌드해서 PID 1·종료 코드·좀비 수거까지 확인하는 것이 이 이슈가 요구한 전부다.
+- 되돌리려면: 되돌릴 코드 변경이 없다. 다만 `pnpm docker:up` 자체는 여전히 실패하므로,
+  그 문제는 `docs/issues/2026-11-04-docker-compose-build-blocked-by-proxy.md` 로 분리했다.
+
 ### 2026-11-05 · 2026-11-04-restrict-health-detail-exposure
 
 - 결정: 차단을 **서버 측 응답 축소**로 구현했다. `HEALTH_EXPOSE_DETAILS`(기본 false)가 false 면 공개 응답은
