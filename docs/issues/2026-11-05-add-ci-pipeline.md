@@ -1,7 +1,7 @@
 ---
 id: 2026-11-05-add-ci-pipeline
 title: CI 파이프라인 구축 (검증 명령과 템플릿 검증 자동 실행)
-status: in-progress
+status: done
 priority: P2
 area: [infra]
 created: 2026-11-05
@@ -12,8 +12,9 @@ updated: 2026-11-05
 
 ## 현재 상태
 
-착수. `.github/workflows/ci.yml` 과 `scripts/validate-issues.sh` 를 작성했다.
-GitHub Actions 에서 실제로 돌아가는지는 push 후 실행 결과로 확인한다.
+완료. GitHub Actions 에서 run #4 가 `success` 로 끝났다 (run id 41976631174).
+모든 브랜치 push 에서 돌고, 변경 영역에 따라 모바일·인프라·계약 job 을 건너뛴다.
+실제 실행으로 결함 2건(생성기 job 의 의존성 누락, 환경변수 없는 웹 빌드 실패)을 찾아 고쳤다.
 
 ## 배경
 
@@ -31,12 +32,12 @@ GitHub Actions 에서 실제로 돌아가는지는 push 후 실행 결과로 확
 
 ## 완료 조건
 
-- [ ] PR 과 기본 브랜치 push 에서 위 검증이 실행됨
-- [ ] 도구 설치는 `scripts/setup-toolchain.sh` 를 재사용 (버전·체크섬이 로컬과 같아야 한다)
-- [ ] Flutter 설치는 모바일 파일이 바뀐 경우에만 (전체 실행 시간 절약)
-- [ ] 이슈 절차 검사 스크립트 추가 (`scripts/validate-issues.sh` 등)
-- [ ] 일부러 규칙을 위반한 커밋으로 각 검사가 실패하는 것을 확인
-- [ ] GitHub Actions 에서 실제 실행 결과 확인 (워크플로 문법·job 조건이 의도대로 동작하는지)
+- [x] PR 과 기본 브랜치 push 에서 위 검증이 실행됨
+- [x] 도구 설치는 `scripts/setup-toolchain.sh` 를 재사용 (버전·체크섬이 로컬과 같아야 한다)
+- [x] Flutter 설치는 모바일 파일이 바뀐 경우에만 (전체 실행 시간 절약)
+- [x] 이슈 절차 검사 스크립트 추가 (`scripts/validate-issues.sh` 등)
+- [x] 일부러 규칙을 위반한 커밋으로 각 검사가 실패하는 것을 확인
+- [x] GitHub Actions 에서 실제 실행 결과 확인 (워크플로 문법·job 조건이 의도대로 동작하는지)
 
 ## 범위 밖
 
@@ -44,6 +45,27 @@ GitHub Actions 에서 실제로 돌아가는지는 push 후 실행 결과로 확
 - 커밋 메시지 형식 검사
 
 ## 변경 로그
+
+### 2026-11-05 · claude/festive-franklin-pk7qxz
+
+- 변경: 트리거를 모든 브랜치 push 로 바꾸고(원래는 `main` push·PR 만이라 한 번도 실행되지 않았다),
+  중복 실행 판단과 변경 영역 판단을 `plan` job 하나로 모았다. CI 가 찾은 결함 2건을 함께 고쳤다.
+- 검증 (GitHub Actions 실제 실행):
+  - run #1: `plan` 성공, `이슈 절차` 성공, `Flutter`·`K8s`·`계약 드리프트` **skipped**
+    → 워크플로 파일만 바꾼 커밋이라 경로 필터가 의도대로 동작함을 확인
+  - run #1 `생성기 템플릿` **실패**: `verify-scaffold.sh` 를 의존성 설치 없이 돌려 shared-types 빌드가 깨졌다
+    → job 에 `pnpm install --frozen-lockfile` 추가
+  - run #2 `verify`·`생성기 템플릿` **실패**: `@app/client-web#build` 가
+    `Invalid input: expected string, received undefined` → `Failed to collect page data for /health`.
+    로컬은 gitignore 된 `.env.local` 때문에 통과하고 있었고, 새 clone 은 같은 벽에 막힌다
+    → 빌드하는 job 에 `NEXT_PUBLIC_API_URL`·`API_INTERNAL_URL` 자리표시자 추가,
+      `env.ts` 의 에러 메시지에 해결 방법 명시, README Step 1 에 예시 env 복사 추가
+  - run #4 **success** (전체 2분 14초). 이 커밋은 `apps/client-web/src/lib/env.ts` 를 바꿨으므로
+    계약·모바일·K8s job 은 정확히 skipped
+  - 로컬: `bash scripts/validate-issues.sh` → 이슈 12개 통과. 위반 3종(체크 안 된 완료 조건, id 불일치,
+    잘못된 status) 각각 exit 1 확인
+  - `concurrency` 동작 확인: 새 push 때 진행 중이던 run #1 이 `cancelled` 로 바뀜
+- 다음: 없음
 
 ### 2026-11-05 · claude/festive-franklin-pk7qxz
 
