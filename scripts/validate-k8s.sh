@@ -42,16 +42,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# 도구가 없으면 설치한다. "도구가 없어서 검증을 건너뛰는" 선택지를 없애기 위한 것이다.
 require_tools() {
-  local missing=()
-  local tool
-  for tool in kustomize kubeconform; do
-    command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
-  done
-  if [[ ${#missing[@]} -gt 0 ]]; then
-    die "필요한 도구가 없습니다: ${missing[*]} → 'bash scripts/setup-toolchain.sh' 실행 후 다시 시도하세요.
-  설치할 수 없으면 이 검증은 '검증 미실행: ${missing[*]} 없음'으로 기록합니다."
-  fi
+  bash "$REPO_ROOT/scripts/ensure-tools.sh" kustomize kubeconform ||
+    die "검증 도구를 준비할 수 없습니다. 이 검증은 '검증 미실행: kustomize/kubeconform 없음' 으로 기록하세요."
 }
 
 # 렌더링된 YAML에서 리소스 개수를 센다 (문서마다 최상위 `kind:` 줄이 하나씩 있다)

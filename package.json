@@ -19,12 +19,12 @@
     "scaffold": "node scripts/scaffold-domain.mjs",
     "scaffold:verify": "bash scripts/verify-scaffold.sh",
     "check:contracts": "pnpm --filter @repo/shared-types build && node scripts/check-dart-contract.mjs",
-    "docker:up": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env up -d --build",
+    "docker:up": "bash scripts/docker-up.sh",
     "docker:down": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env down",
     "docker:logs": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env logs -f",
     "infra:up": "docker compose -f infra/docker/docker-compose.local.yml --env-file infra/docker/.env up -d postgres redis",
-    "mobile:analyze": "cd apps/client-mobile && flutter analyze",
-    "mobile:test": "cd apps/client-mobile && flutter test"
+    "mobile:analyze": "bash scripts/ensure-tools.sh flutter && cd apps/client-mobile && flutter analyze",
+    "mobile:test": "bash scripts/ensure-tools.sh flutter && cd apps/client-mobile && flutter test"
   },
   "devDependencies": {
     "prettier": "^3.6.2",

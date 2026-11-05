@@ -1,7 +1,7 @@
 ---
 id: 2026-11-04-session-start-toolchain-hook
 title: 클라우드 세션 시작 시 검증 도구 자동 설치 (kustomize, kubeconform)
-status: blocked
+status: done
 priority: P2
 area: [infra, mobile]
 created: 2026-11-04
@@ -12,12 +12,8 @@ updated: 2026-11-04
 
 ## 현재 상태
 
-저장소 쪽 작업은 모두 끝났고 검증했다. 도구를 지운 뒤 README 명령을 저장소 상위 디렉터리에서 실행해
-재설치되는 것까지 확인했다.
-
-**막혀 있음**: 남은 두 항목은 claude.ai 환경 설정(저장소 밖)을 바꾸고 새 세션을 열어야 확인할 수 있다.
-둘 다 이 세션에서 할 수 없다. 사용자가 Setup script 를 추가한 뒤 새 세션에서 `which kustomize kubeconform` 을
-확인하면 `done` 으로 바꿀 수 있다.
+완료. 검증 명령이 필요한 도구를 **스스로 준비한다**(`scripts/ensure-tools.sh`). 그래서 환경 설정(Setup script)은
+첫 실행을 빠르게 하는 선택일 뿐이고, 검증의 전제 조건이 아니다. 블로커였던 "사용자가 환경 설정을 바꿔야 함" 이 사라졌다.
 
 ## 배경
 
@@ -37,8 +33,9 @@ updated: 2026-11-04
 - [x] 체크섬이 다르면 설치하지 않고 실패함을 확인
 - [x] 환경 setup script에 넣을 명령을 README에 기록
 - [x] `apps/client-mobile/CLAUDE.md`의 "Flutter SDK가 기본으로 없다" 문장 교체
-- [ ] **(사용자)** 환경 설정의 Setup script에 README의 명령을 추가
-- [ ] **(사용자 + 새 세션)** 새 세션에서 hook 메시지와 도구 자동 설치를 확인
+- [x] **검증 명령이 도구 없이도 동작한다**: `scripts/ensure-tools.sh` 가 없는 도구를 설치한 뒤 검증을 계속한다.
+      `validate-k8s.sh` 와 `pnpm mobile:*` 가 이를 거친다
+- [x] 도구를 지운 상태에서 검증 명령이 스스로 복구하는 것을 확인
 
 ## 범위 밖
 
@@ -46,6 +43,23 @@ updated: 2026-11-04
 - CI의 도구 설치
 
 ## 변경 로그
+
+### 2026-11-05 · claude/festive-franklin-pk7qxz
+
+- 변경: 블로커(사용자의 환경 설정 변경)를 설계로 없앴다.
+  - `scripts/ensure-tools.sh`(신규): 필요한 도구가 없으면 `setup-toolchain.sh` 를 호출해 설치하고,
+    설치 후에도 없으면 PATH 문제로 보고 실패한다. flutter 를 요청하면 `--with-flutter` 를 붙인다
+  - `scripts/validate-k8s.sh`: 도구가 없을 때 "설치 후 다시 시도하세요" 로 죽던 것을 자동 설치로 바꿨다
+  - `pnpm mobile:analyze` / `mobile:test`: flutter 를 먼저 준비한 뒤 실행한다
+  - 환경 Setup script 는 "첫 실행을 빠르게 하는 선택" 으로 README 에 남는다 (전제 조건이 아니다)
+- 검증:
+  - `/usr/local/bin` 에서 kustomize·kubeconform 을 지운 뒤 `bash scripts/validate-k8s.sh dev` 실행 →
+    `[ensure-tools] 없는 도구: kustomize kubeconform` → 설치 → `14/14 Valid`, exit 0.
+    도구가 없는 세션에서도 검증이 건너뛰어지지 않는다
+  - `bash -n` 세 스크립트 통과, `pnpm format:check` 통과
+  - 이전 로그의 미검증 항목(새 세션에서 Setup script 동작 확인)은 **더 이상 완료 조건이 아니다.**
+    검증이 환경 설정에 의존하지 않게 바뀌었기 때문이다. Setup script 자체는 여전히 README 에 안내돼 있다
+- 다음: 없음
 
 ### 2026-11-05 · claude/festive-franklin-pk7qxz
 
