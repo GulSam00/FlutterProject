@@ -69,9 +69,15 @@ claude.ai 환경 설정(세션 제목 표시줄의 클라우드 환경 메뉴 �
 새 컨테이너를 만들 때 한 번 설치됩니다. setup script는 저장소의 상위 디렉터리에서 시작하므로 `cd`가 먼저 필요합니다.
 
 ```bash
-cd FlutterProject
-bash scripts/setup-toolchain.sh
+if [ -d FlutterProject ]; then
+  cd FlutterProject
+  bash scripts/setup-toolchain.sh
+fi
 ```
+
+> ⚠️ `if [ -d ... ]` 로 감싸는 이유: 하나의 환경을 여러 저장소가 공유하면, Setup script 는 모든 세션에서 실행됩니다.
+> 감싸지 않으면 다른 저장소의 세션에서 `cd: No such file or directory` 로 **스크립트 전체가 실패**하고,
+> 그 세션은 설정되지 않은 컨테이너로 시작합니다. 같은 이유로 다른 프로젝트의 명령도 각각 감싸 두세요.
 
 - 설치 로직과 고정 버전·sha256은 `scripts/setup-toolchain.sh`에 있습니다 (환경 설정에는 호출만 둡니다).
 - Flutter SDK(약 2GB)는 세션 준비 시간을 줄이려고 기본 설치에서 뺐습니다. 모바일 작업 때 세션 안에서

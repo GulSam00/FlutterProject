@@ -1,7 +1,7 @@
 ---
 id: 2026-11-04-session-start-toolchain-hook
 title: 클라우드 세션 시작 시 검증 도구 자동 설치 (kustomize, kubeconform)
-status: in-progress
+status: blocked
 priority: P2
 area: [infra, mobile]
 created: 2026-11-04
@@ -12,9 +12,12 @@ updated: 2026-11-04
 
 ## 현재 상태
 
-저장소 쪽 작업(설치 스크립트, 확인 hook, 문서)은 끝났고 이 컨테이너에서 검증했다.
-남은 것은 사용자 작업 두 가지다: 환경 설정 Setup script에 README의 두 줄 추가 → 새 세션에서 자동 설치와 hook 메시지 확인.
-그래서 `done`이 아니라 `in-progress`로 둔다.
+저장소 쪽 작업은 모두 끝났고 검증했다. 도구를 지운 뒤 README 명령을 저장소 상위 디렉터리에서 실행해
+재설치되는 것까지 확인했다.
+
+**막혀 있음**: 남은 두 항목은 claude.ai 환경 설정(저장소 밖)을 바꾸고 새 세션을 열어야 확인할 수 있다.
+둘 다 이 세션에서 할 수 없다. 사용자가 Setup script 를 추가한 뒤 새 세션에서 `which kustomize kubeconform` 을
+확인하면 `done` 으로 바꿀 수 있다.
 
 ## 배경
 
@@ -43,6 +46,25 @@ updated: 2026-11-04
 - CI의 도구 설치
 
 ## 변경 로그
+
+### 2026-11-05 · claude/festive-franklin-pk7qxz
+
+- 변경: README 의 Setup script 예시를 `if [ -d FlutterProject ]; then ... fi` 로 감쌌다.
+  감싸지 않은 형태는 하나의 환경을 여러 저장소가 공유할 때 다른 저장소의 세션에서
+  `cd: No such file or directory` 로 스크립트 전체를 실패시킨다. 실제로 이 이슈를 처리하려고 만든
+  하위 세션이 그 이유로 시작조차 못 했다 (`cd: /home/user/singcode: No such file or directory`, exit 1).
+  문서가 그 함정을 그대로 권하고 있었다.
+- 검증:
+  - `/usr/local/bin` 에서 kustomize·kubeconform 을 지운 뒤, 저장소 **상위 디렉터리**에서 README 명령을
+    그대로 실행 → exit 0, `kustomize version` v5.8.1, `kubeconform -v` v0.8.0 재설치 확인.
+    (Setup script 는 저장소 상위에서 시작하므로 이 위치가 실제 실행 조건과 같다)
+  - 가드 있는 형태를 저장소가 없는 상황에서 실행 → 건너뛰고 exit 0.
+    가드 없는 형태는 `cd` 에서 실패 (하위 세션이 겪은 것과 동일)
+  - `pnpm format:check` 통과
+  - **미검증**: 실제 새 세션에서 SessionStart hook 이 실행되는지, Setup script 가 도구를 자동 설치하는지.
+    환경 설정 변경과 새 세션이 필요하다
+- 다음: (사용자) 환경 설정 Setup script 에 README 의 가드 형태를 추가 → 새 세션에서 hook 메시지와
+  `which kustomize kubeconform` 확인 → 이 이슈를 `done` 으로
 
 ### 2026-11-04 · claude/festive-franklin-pk7qxz
 
